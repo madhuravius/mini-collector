@@ -1,6 +1,7 @@
 package batcher
 
 import (
+	"context"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter"
 	log "github.com/sirupsen/logrus"
@@ -8,20 +9,25 @@ import (
 )
 
 const (
-	bufferSize       = 10
-	batchSize        = 100
-	publishFrequency = 5 * time.Second // TODO: Tweak
+	ingestBufferSize = 10
+	emitTimeout      = time.Second
 )
 
 type batcher struct {
 	emitter emitter.Emitter
-	buffer  chan *batch.Entry
+
+	minPublishFrequency time.Duration
+	maxBatchSize        int
+
+	ingestBuffer chan *batch.Entry
 }
 
-func New(emitter emitter.Emitter) Batcher {
+func New(emitter emitter.Emitter, minPublishFrequency time.Duration, maxBatchSize int) Batcher {
 	b := &batcher{
-		emitter: emitter,
-		buffer:  make(chan *batch.Entry, bufferSize),
+		emitter:             emitter,
+		minPublishFrequency: minPublishFrequency,
+		maxBatchSize:        maxBatchSize,
+		ingestBuffer:        make(chan *batch.Entry, ingestBufferSize),
 	}
 
 	go b.start()
@@ -32,17 +38,17 @@ func New(emitter emitter.Emitter) Batcher {
 func (b *batcher) start() {
 	for {
 		lastPublish := time.Now()
-		currentBatch := make([]batch.Entry, 0, batchSize)
+		currentBatch := make([]batch.Entry, 0, b.maxBatchSize)
 
 	BatchLoop:
 		for {
 			select {
-			case newEntry := <-b.buffer:
+			case newEntry := <-b.ingestBuffer:
 				currentBatch = append(currentBatch, *newEntry)
-				if len(currentBatch) >= batchSize {
+				if len(currentBatch) >= b.maxBatchSize {
 					break BatchLoop
 				}
-			case <-time.After(time.Until(lastPublish.Add(publishFrequency))):
+			case <-time.After(time.Until(lastPublish.Add(b.minPublishFrequency))):
 				break BatchLoop
 			}
 		}
@@ -52,12 +58,20 @@ func (b *batcher) start() {
 }
 
 func (b *batcher) emitBatch(batch []batch.Entry) {
-	err := b.emitter.Emit(batch)
+	ctx, cancel := context.WithTimeout(context.Background(), emitTimeout)
+	defer cancel()
+
+	err := b.emitter.Emit(ctx, batch)
 	if err != nil {
-		log.Errorf("emitter rejected batch: %+v", err)
+		log.Errorf("emitter did not accept batch (%d entries): %v", len(batch), err)
 	}
 }
 
-func (b *batcher) Ingest(entry *batch.Entry) {
-	b.buffer <- entry
+func (b *batcher) Ingest(ctx context.Context, entry *batch.Entry) error {
+	select {
+	case b.ingestBuffer <- entry:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

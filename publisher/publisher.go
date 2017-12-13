@@ -1,7 +1,6 @@
 package publisher
 
 import (
-	"fmt"
 	"github.com/aptible/mini-collector/api"
 	"github.com/aptible/mini-collector/collector"
 	log "github.com/sirupsen/logrus"
@@ -11,8 +10,7 @@ import (
 	"time"
 )
 
-// TODO: Make it an inteface
-type Publisher struct {
+type publisher struct {
 	connectTimeout time.Duration
 	publishTimeout time.Duration
 
@@ -25,10 +23,10 @@ type Publisher struct {
 	cancel         context.CancelFunc
 }
 
-func Open(serverAddress string, dialOption grpc.DialOption, tags map[string]string, queueSize int) *Publisher {
+func Open(serverAddress string, dialOption grpc.DialOption, tags map[string]string, queueSize int) Publisher {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	publisher := &Publisher{
+	p := &publisher{
 		connectTimeout: 5 * time.Second,
 		publishTimeout: 2 * time.Second,
 
@@ -41,12 +39,12 @@ func Open(serverAddress string, dialOption grpc.DialOption, tags map[string]stri
 		cancel:         cancel,
 	}
 
-	go publisher.startPublisher(ctx)
+	go p.startPublisher(ctx)
 
-	return publisher
+	return p
 }
 
-func (p *Publisher) startPublisher(ctx context.Context) {
+func (p *publisher) startPublisher(ctx context.Context) {
 StartLoop:
 	for {
 		select {
@@ -62,7 +60,7 @@ StartLoop:
 	p.doneChannel <- nil
 }
 
-func (p *Publisher) startConnection(ctx context.Context) {
+func (p *publisher) startConnection(ctx context.Context) {
 	connection, err := func() (*grpc.ClientConn, error) {
 		dialCtx, cancel := context.WithTimeout(ctx, p.connectTimeout)
 		defer cancel()
@@ -121,7 +119,7 @@ PublishLoop:
 	log.Debugf("shutdown connection")
 }
 
-func (p *Publisher) Queue(ts time.Time, point collector.Point) error {
+func (p *publisher) Queue(ctx context.Context, ts time.Time, point collector.Point) error {
 	payload := api.PublishRequest{
 		UnixTime:      uint64(ts.Unix()),
 		MilliCpuUsage: point.MilliCpuUsage,
@@ -136,12 +134,12 @@ func (p *Publisher) Queue(ts time.Time, point collector.Point) error {
 	select {
 	case p.publishChannel <- &payload:
 		return nil
-	default:
-		return fmt.Errorf("queue is full")
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
-func (p *Publisher) Close() {
+func (p *publisher) Close() {
 	p.cancel()
 	<-p.doneChannel
 }

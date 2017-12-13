@@ -1,9 +1,10 @@
 package batcher
 
 import (
+	"context"
 	"github.com/aptible/mini-collector/batch"
 )
 
 type Batcher interface {
-	Ingest(entry *batch.Entry)
+	Ingest(ctx context.Context, entry *batch.Entry) error
 }

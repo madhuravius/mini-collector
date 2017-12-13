@@ -10,8 +10,14 @@
 [[projects]]
   branch = "master"
   name = "github.com/golang/protobuf"
-  packages = ["proto","protoc-gen-go/descriptor","ptypes","ptypes/any","ptypes/duration","ptypes/timestamp"]
+  packages = ["jsonpb","proto","protoc-gen-go/descriptor","ptypes","ptypes/any","ptypes/duration","ptypes/struct","ptypes/timestamp"]
   revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [".","logging","logging/logrus","tags","tags/logrus"]
+  revision = "93790b4a90fab4022bb148faf5e3f3580d817d50"
 
 [[projects]]
   name = "github.com/influxdata/influxdb"
@@ -70,6 +76,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "14e1868bdcca95eb425e55e762c749763ed3b452db446958f762aa671477b8bb"
+  inputs-digest = "aadfbd128c87f551b647c9e189b090e58d916de7fedc2e71cb657527bf5d8ae6"
   solver-name = "gps-cdcl"
   solver-version = 1

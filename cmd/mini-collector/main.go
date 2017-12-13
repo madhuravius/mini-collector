@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"github.com/aptible/mini-collector/collector"
 	"github.com/aptible/mini-collector/publisher"
 	"github.com/aptible/mini-collector/tls"
+	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/grpclog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,8 +17,7 @@ import (
 
 const (
 	publisherBufferSize = 10
-	// pollInterval        = 2 * time.Second // TODO
-	pollInterval = 2000 * time.Millisecond // TODO
+	queueTimeout        = time.Second
 )
 
 func getEnvOrFatal(k string) string {
@@ -29,9 +29,8 @@ func getEnvOrFatal(k string) string {
 }
 
 func main() {
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+	grpcLogrus.ReplaceGrpcLogger(log.NewEntry(log.StandardLogger()))
 
-	// TODO: Volumes / configuration
 	// TODO: Throttling stats
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM)
@@ -57,11 +56,6 @@ func main() {
 		tags["database"] = databaseName
 	}
 
-	_, debug := os.LookupEnv("MINI_COLLECTOR_DEBUG")
-	if debug {
-		log.SetLevel(log.DebugLevel)
-	}
-
 	cgroupPath, ok := os.LookupEnv("MINI_COLLECTOR_CGROUP_PATH")
 	if !ok {
 		cgroupPath = "/sys/fs/cgroup"
@@ -70,6 +64,21 @@ func main() {
 	mountPath, ok := os.LookupEnv("MINI_COLLECTOR_MOUNT_PATH")
 	if !ok {
 		mountPath = ""
+	}
+
+	pollIntervalText, ok := os.LookupEnv("MINI_COLLECTOR_POLL_INTERVAL")
+	if !ok {
+		pollIntervalText = "30s"
+	}
+
+	pollInterval, err := time.ParseDuration(pollIntervalText)
+	if err != nil {
+		log.Fatalf("invalid poll interval (%s): %v", pollIntervalText, err)
+	}
+
+	_, debug := os.LookupEnv("MINI_COLLECTOR_DEBUG")
+	if debug {
+		log.SetLevel(log.DebugLevel)
 	}
 
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
@@ -83,9 +92,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to load tlsConfig: %v", err)
 		}
-		log.Infof("enabling tls")
+		log.Info("tls is enabled")
 		dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 	} else {
+		log.Warn("tls is disabled")
 		dialOption = grpc.WithInsecure()
 	}
 
@@ -93,22 +103,43 @@ func main() {
 		serverAddress,
 		dialOption,
 		tags,
-		20,
+		publisherBufferSize,
 	)
 
 	c := collector.NewCollector(cgroupPath, containerId, mountPath)
 
+	log.Infof("pollInterval: %s", pollInterval)
+	log.Infof("containerId: %s", containerId)
+	log.Infof("mountPath: %s", mountPath)
+
+	lastPoll := time.Now()
 	lastState := collector.MakeNoContainerState()
 
 MainLoop:
 	for {
+		nextPoll := lastPoll.Add(pollInterval)
+
 		select {
-		case <-time.After(time.Until(lastState.Time.Add(pollInterval))):
-			var point collector.Point
-			point, lastState = c.GetPoint(lastState)
-			err := publisher.Queue(lastState.Time, point)
+		case <-time.After(time.Until(nextPoll)):
+			lastPoll = nextPoll
+
+			point, thisState, err := c.GetPoint(lastState)
+
 			if err != nil {
-				log.Warnf("publisher is failling behind: %v", err)
+				log.Warnf("GetPoint failed: %v", err)
+				continue MainLoop
+			}
+
+			lastState = thisState
+
+			err = func() error {
+				ctx, cancel := context.WithTimeout(context.Background(), queueTimeout)
+				defer cancel()
+				return publisher.Queue(ctx, lastState.Time, point)
+			}()
+
+			if err != nil {
+				log.Warnf("Queue failed: %v", err)
 			}
 		case <-termChan:
 			// Exit

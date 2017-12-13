@@ -1,6 +1,7 @@
 package influxdb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aptible/mini-collector/batch"
@@ -63,7 +64,7 @@ func New(jsonConfiguration string) (*influxdbEmitter, error) {
 	return e, nil
 }
 
-func (e *influxdbEmitter) Emit(batch []batch.Entry) error {
+func (e *influxdbEmitter) Emit(ctx context.Context, batch []batch.Entry) error {
 	if len(batch) <= 0 {
 		// Nothing to emit
 		return nil
@@ -72,8 +73,8 @@ func (e *influxdbEmitter) Emit(batch []batch.Entry) error {
 	select {
 	case e.sendBuffer <- batch:
 		return nil
-	default:
-		return fmt.Errorf("buffer is full")
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 

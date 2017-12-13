@@ -10,10 +10,10 @@ import (
 	"github.com/aptible/mini-collector/emitter/influxdb"
 	"github.com/aptible/mini-collector/emitter/text"
 	"github.com/aptible/mini-collector/tls"
+	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"net"
@@ -69,11 +69,16 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 		tags[k] = v[0]
 	}
 
-	s.batcher.Ingest(&batch.Entry{
+	err := s.batcher.Ingest(ctx, &batch.Entry{
 		Time:           ts,
 		Tags:           tags,
 		PublishRequest: *point,
 	})
+
+	if err != nil {
+		log.Warnf("Ingest failed: %v", err)
+	}
+
 	return &api.PublishResponse{}, nil
 }
 
@@ -93,12 +98,34 @@ func getEmitter() (emitter.Emitter, error) {
 	return nil, fmt.Errorf("no emitter configured")
 }
 
+func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
+	minPublishFrequencyText, ok := os.LookupEnv("AGGREGATOR_MINIMUM_PUBLISH_FREQUENCY")
+	if !ok {
+		minPublishFrequencyText = "15s"
+	}
+
+	minPublishFrequency, err := time.ParseDuration(minPublishFrequencyText)
+	if err != nil {
+		return nil, fmt.Errorf("invalid minimum publish frequency (%s): %v", minPublishFrequencyText, err)
+	}
+
+	log.Infof("minPublishFrequency: %v", minPublishFrequency)
+
+	return batcher.New(em, minPublishFrequency, 1000), nil
+
+}
+
 func main() {
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+	grpcLogrus.ReplaceGrpcLogger(log.NewEntry(log.StandardLogger()))
 
 	emitter, err := getEmitter()
 	if err != nil {
-		log.Fatalf("failed to get emitter: %v", err)
+		log.Fatalf("getEmitter failed: %v", err)
+	}
+
+	batcher, err := getBatcher(emitter)
+	if err != nil {
+		log.Fatalf("getBatcher failed: %v", err)
 	}
 
 	lis, err := net.Listen("tcp", port)
@@ -116,14 +143,15 @@ func main() {
 			log.Fatalf("failed to load tlsConfig: %v", err)
 		}
 
-		log.Infof("enabling tls")
+		log.Info("tls is enabled")
 		srv = grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
 	} else {
+		log.Warn("tls is disabled")
 		srv = grpc.NewServer()
 	}
 
 	api.RegisterAggregatorServer(srv, &server{
-		batcher: batcher.New(emitter),
+		batcher: batcher,
 	})
 
 	// Register reflection service on gRPC server.

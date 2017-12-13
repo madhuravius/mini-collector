@@ -1,9 +1,10 @@
 package emitter
 
 import (
+	"context"
 	"github.com/aptible/mini-collector/batch"
 )
 
 type Emitter interface {
-	Emit(batch []batch.Entry) error
+	Emit(ctx context.Context, batch []batch.Entry) error
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
+	"os"
 	"syscall"
 	"time"
 )
@@ -41,15 +42,17 @@ func NewCollector(cgroupPath string, dockerName string, mountPath string) Collec
 	}
 }
 
-func (c *collector) GetPoint(lastState State) (Point, State) {
+func (c *collector) getCgroupPoint(lastState State) (cgroupPoint, State, error) {
 	for _, subsys := range c.subsystems {
 		cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, subsys.Name(), c.dockerName)
 
 		err := subsys.GetStats(cgPath, &c.statsBuffer)
+
 		if err != nil {
-			// TODO: Logging
-			fmt.Printf("%s.GetStats Error: %+v\n", subsys.Name(), err)
-			return MakeNoContainerPoint(), MakeNoContainerState()
+			if os.IsNotExist(err) {
+				return cgroupPoint{Running: false}, MakeNoContainerState(), nil
+			}
+			return cgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", subsys.Name(), err)
 		}
 	}
 
@@ -71,36 +74,52 @@ func (c *collector) GetPoint(lastState State) (Point, State) {
 	virtualMemory := c.statsBuffer.MemoryStats.Usage.Usage
 	limitMemory := c.statsBuffer.MemoryStats.Usage.Limit
 
-	var (
-		diskUsageBytes uint64 = 0
-		diskLimitBytes uint64 = 0
-	)
-
-	if c.mountPath != "" {
-		err := syscall.Statfs(c.mountPath, &c.fsBuffer)
-		if err != nil {
-			fmt.Printf("Statfs Error: %+v\n", err)
-			return MakeNoContainerPoint(), MakeNoContainerState()
-		}
-		blockSize := uint64(c.fsBuffer.Bsize)
-		diskLimitBytes = c.fsBuffer.Blocks * blockSize
-		diskUsageBytes = (c.fsBuffer.Blocks - c.fsBuffer.Bavail) * blockSize
-	}
-
-	point := Point{
-		MilliCpuUsage: milliCpuUsage,
-		MemoryTotalMb: virtualMemory / MbInBytes,
-		MemoryRssMb:   (baseRssMemory + mappedFileMemory) / MbInBytes,
-		MemoryLimitMb: (limitMemory) / MbInBytes,
-		DiskUsageMb:   diskUsageBytes / MbInBytes,
-		DiskLimitMb:   diskLimitBytes / MbInBytes,
-		Running:       true,
-	}
-
 	state := State{
 		Time:                pollTime,
 		AccumulatedCpuUsage: accumulatedCpuUsage,
 	}
 
-	return point, state
+	return cgroupPoint{
+		MilliCpuUsage: milliCpuUsage,
+		MemoryTotalMb: virtualMemory / MbInBytes,
+		MemoryRssMb:   (baseRssMemory + mappedFileMemory) / MbInBytes,
+		MemoryLimitMb: (limitMemory) / MbInBytes,
+		Running:       true,
+	}, state, nil
+
+}
+
+func (c *collector) getDiskPoint() (diskPoint, error) {
+	if c.mountPath == "" {
+		return diskPoint{}, nil
+	}
+
+	err := syscall.Statfs(c.mountPath, &c.fsBuffer)
+	if err != nil {
+		return diskPoint{}, fmt.Errorf("Statfs failed: %v", err)
+	}
+
+	blockSize := uint64(c.fsBuffer.Bsize)
+
+	diskUsageBytes := (c.fsBuffer.Blocks - c.fsBuffer.Bavail) * blockSize
+	diskLimitBytes := c.fsBuffer.Blocks * blockSize
+
+	return diskPoint{
+		DiskUsageMb: diskUsageBytes / MbInBytes,
+		DiskLimitMb: diskLimitBytes / MbInBytes,
+	}, nil
+}
+
+func (c *collector) GetPoint(lastState State) (Point, State, error) {
+	cgroupPoint, thisState, err := c.getCgroupPoint(lastState)
+	if err != nil {
+		return Point{}, State{}, fmt.Errorf("getCgroupPoint failed: %v", err)
+	}
+
+	diskPoint, err := c.getDiskPoint()
+	if err != nil {
+		return Point{}, State{}, fmt.Errorf("getDiskPoint failed: %v", err)
+	}
+
+	return Point{cgroupPoint, diskPoint}, thisState, nil
 }
