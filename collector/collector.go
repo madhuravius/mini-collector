@@ -42,7 +42,7 @@ func NewCollector(cgroupPath string, dockerName string, mountPath string) Collec
 	}
 }
 
-func (c *collector) getCgroupPoint(lastState State) (cgroupPoint, State, error) {
+func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) {
 	for _, subsys := range c.subsystems {
 		cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, subsys.Name(), c.dockerName)
 
@@ -50,9 +50,9 @@ func (c *collector) getCgroupPoint(lastState State) (cgroupPoint, State, error) 
 
 		if err != nil {
 			if os.IsNotExist(err) {
-				return cgroupPoint{Running: false}, MakeNoContainerState(), nil
+				return CgroupPoint{Running: false}, MakeNoContainerState(), nil
 			}
-			return cgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", subsys.Name(), err)
+			return CgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", subsys.Name(), err)
 		}
 	}
 
@@ -79,7 +79,7 @@ func (c *collector) getCgroupPoint(lastState State) (cgroupPoint, State, error) 
 		AccumulatedCpuUsage: accumulatedCpuUsage,
 	}
 
-	return cgroupPoint{
+	return CgroupPoint{
 		MilliCpuUsage: milliCpuUsage,
 		MemoryTotalMb: virtualMemory / MbInBytes,
 		MemoryRssMb:   (baseRssMemory + mappedFileMemory) / MbInBytes,
@@ -89,14 +89,14 @@ func (c *collector) getCgroupPoint(lastState State) (cgroupPoint, State, error) 
 
 }
 
-func (c *collector) getDiskPoint() (diskPoint, error) {
+func (c *collector) getDiskPoint() (DiskPoint, error) {
 	if c.mountPath == "" {
-		return diskPoint{}, nil
+		return DiskPoint{}, nil
 	}
 
 	err := syscall.Statfs(c.mountPath, &c.fsBuffer)
 	if err != nil {
-		return diskPoint{}, fmt.Errorf("Statfs failed: %v", err)
+		return DiskPoint{}, fmt.Errorf("Statfs failed: %v", err)
 	}
 
 	blockSize := uint64(c.fsBuffer.Bsize)
@@ -104,22 +104,22 @@ func (c *collector) getDiskPoint() (diskPoint, error) {
 	diskUsageBytes := (c.fsBuffer.Blocks - c.fsBuffer.Bavail) * blockSize
 	diskLimitBytes := c.fsBuffer.Blocks * blockSize
 
-	return diskPoint{
+	return DiskPoint{
 		DiskUsageMb: diskUsageBytes / MbInBytes,
 		DiskLimitMb: diskLimitBytes / MbInBytes,
 	}, nil
 }
 
 func (c *collector) GetPoint(lastState State) (Point, State, error) {
-	cgroupPoint, thisState, err := c.getCgroupPoint(lastState)
+	CgroupPoint, thisState, err := c.getCgroupPoint(lastState)
 	if err != nil {
 		return Point{}, State{}, fmt.Errorf("getCgroupPoint failed: %v", err)
 	}
 
-	diskPoint, err := c.getDiskPoint()
+	DiskPoint, err := c.getDiskPoint()
 	if err != nil {
 		return Point{}, State{}, fmt.Errorf("getDiskPoint failed: %v", err)
 	}
 
-	return Point{cgroupPoint, diskPoint}, thisState, nil
+	return Point{CgroupPoint, DiskPoint}, thisState, nil
 }

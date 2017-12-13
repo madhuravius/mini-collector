@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type cgroupPoint struct {
+type CgroupPoint struct {
 	MilliCpuUsage uint64
 
 	MemoryTotalMb uint64
@@ -14,14 +14,14 @@ type cgroupPoint struct {
 	Running bool
 }
 
-type diskPoint struct {
+type DiskPoint struct {
 	DiskUsageMb uint64
 	DiskLimitMb uint64
 }
 
 type Point struct {
-	cgroupPoint
-	diskPoint
+	CgroupPoint
+	DiskPoint
 }
 
 type State struct {

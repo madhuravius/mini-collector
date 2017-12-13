@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	publisherBufferSize = 10
-	queueTimeout        = time.Second
+	queueTimeout = time.Second
 )
 
 func getEnvOrFatal(k string) string {
@@ -99,12 +98,17 @@ func main() {
 		dialOption = grpc.WithInsecure()
 	}
 
-	publisher := publisher.Open(
-		serverAddress,
-		dialOption,
-		tags,
-		publisherBufferSize,
+	publisher, err := publisher.Open(
+		&publisher.Config{
+			ServerAddress: serverAddress,
+			DialOption:    dialOption,
+			Tags:          tags,
+		},
 	)
+
+	if err != nil {
+		log.Fatalf("Open failed: %v", err)
+	}
 
 	c := collector.NewCollector(cgroupPath, containerId, mountPath)
 

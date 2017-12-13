@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"fmt"
 	"github.com/aptible/mini-collector/api"
 	"github.com/aptible/mini-collector/collector"
 	log "github.com/sirupsen/logrus"
@@ -10,8 +11,13 @@ import (
 	"time"
 )
 
+const (
+	maxBackoffDuration    = 5 * time.Second
+	defaultPublishTimeout = 2 * time.Second
+	defaultBufferSize     = 10
+)
+
 type publisher struct {
-	connectTimeout time.Duration
 	publishTimeout time.Duration
 
 	serverAddress string
@@ -21,65 +27,84 @@ type publisher struct {
 	publishChannel chan *api.PublishRequest
 	doneChannel    chan interface{}
 	cancel         context.CancelFunc
+
+	clientFactory clientFactory
 }
 
-func Open(serverAddress string, dialOption grpc.DialOption, tags map[string]string, queueSize int) Publisher {
+func createGrpcConnection(ctx context.Context, serverAddress string, dialOption grpc.DialOption) (*grpc.ClientConn, error) {
+	return grpc.DialContext(
+		ctx,
+		serverAddress,
+		dialOption,
+		grpc.WithBackoffMaxDelay(maxBackoffDuration),
+	)
+}
+
+func Open(config *Config) (Publisher, error) {
+	return open(config, createGrpcConnection, api.NewAggregatorClient)
+}
+
+func mustOpen(config *Config, cnf connectionFactory, clf clientFactory) Publisher {
+	pub, err := open(config, cnf, clf)
+	if err != nil {
+		panic(err)
+	}
+	return pub
+}
+
+func open(config *Config, cnf connectionFactory, clf clientFactory) (Publisher, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	publishTimeout := (*config).PublishTimeout
+	if publishTimeout == 0 {
+		publishTimeout = defaultPublishTimeout
+	}
+
+	bufferSize := (*config).BufferSize
+	if bufferSize == 0 {
+		bufferSize = defaultBufferSize
+	}
+
+	serverAddress := (*config).ServerAddress
+	if serverAddress == "" {
+		return nil, fmt.Errorf("ServerAddress is required")
+	}
+
 	p := &publisher{
-		connectTimeout: 5 * time.Second,
-		publishTimeout: 2 * time.Second,
+		publishTimeout: publishTimeout,
 
-		serverAddress: serverAddress,
-		dialOption:    dialOption,
-		tags:          tags,
+		serverAddress: (*config).ServerAddress,
+		dialOption:    (*config).DialOption,
+		tags:          (*config).Tags,
 
-		publishChannel: make(chan *api.PublishRequest, queueSize),
+		publishChannel: make(chan *api.PublishRequest, bufferSize),
 		doneChannel:    make(chan interface{}),
 		cancel:         cancel,
+
+		clientFactory: clf,
 	}
 
-	go p.startPublisher(ctx)
+	conn, err := cnf(ctx, p.serverAddress, p.dialOption)
+	if err != nil {
+		return nil, fmt.Errorf("connectionFactory failed: %v", err)
+	}
 
-	return p
-}
-
-func (p *publisher) startPublisher(ctx context.Context) {
-StartLoop:
-	for {
-		select {
-		case <-ctx.Done():
-			log.Debugf("shutdown publisher loop")
-			break StartLoop
-		default:
-			p.startConnection(ctx)
+	go func() {
+		// This is here to support tests, where we return nil for the
+		// *grpc.ClientConn as a stub: since *grpc.ClientConn is a
+		// struct (as opposed to an interface), we can't do any better.
+		if conn != nil {
+			defer conn.Close()
 		}
-	}
 
-	log.Debugf("shutdown publisher")
-	p.doneChannel <- nil
-}
-
-func (p *publisher) startConnection(ctx context.Context) {
-	connection, err := func() (*grpc.ClientConn, error) {
-		dialCtx, cancel := context.WithTimeout(ctx, p.connectTimeout)
-		defer cancel()
-		return grpc.DialContext(
-			dialCtx,
-			p.serverAddress,
-			p.dialOption,
-			grpc.WithBlock(),
-			grpc.WithBackoffMaxDelay(5*time.Second),
-		)
+		p.startConnection(ctx, conn)
 	}()
 
-	if err != nil {
-		log.Errorf("could not connect to [%v]: %v", p.serverAddress, err)
-		return
-	}
-	defer connection.Close()
+	return p, nil
+}
 
-	client := api.NewAggregatorClient(connection)
+func (p *publisher) startConnection(ctx context.Context, connection *grpc.ClientConn) {
+	client := p.clientFactory(connection)
 
 	md := metadata.New(p.tags)
 
@@ -92,8 +117,20 @@ PublishLoop:
 			err := func() error {
 				localCtx, cancel := context.WithTimeout(baseCtx, p.publishTimeout)
 				defer cancel()
+
 				_, err := client.Publish(localCtx, payload, grpc.FailFast(false))
-				return err
+				if err != nil {
+					// Wait on the context no matter what.
+					// This ensures that even if grpc
+					// returns quicly despite
+					// grpc.FailFast(false) being set, we
+					// don't accidentally go into a hot
+					// loop.
+					<-localCtx.Done()
+					return err
+				}
+
+				return nil
 			}()
 
 			if err != nil {
@@ -111,12 +148,13 @@ PublishLoop:
 
 			log.Debugf("delivered point [%v]", (*payload).UnixTime)
 		case <-ctx.Done():
-			log.Debugf("shutdown connection loop")
+			log.Debugf("shutdown loop loop")
 			break PublishLoop
 		}
 	}
 
-	log.Debugf("shutdown connection")
+	log.Debugf("shutdown publisher")
+	p.doneChannel <- nil
 }
 
 func (p *publisher) Queue(ctx context.Context, ts time.Time, point collector.Point) error {
