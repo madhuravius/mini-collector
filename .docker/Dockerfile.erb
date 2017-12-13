@@ -14,8 +14,8 @@ COPY . .
 RUN go build -i github.com/aptible/mini-collector/cmd/mini-collector
 RUN go build -i github.com/aptible/mini-collector/cmd/aggregator
 
-
 FROM alpine:3.7
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /go/src/github.com/aptible/mini-collector/mini-collector /usr/local/bin/
-CMD ["mini-collector"]
+COPY --from=builder /go/src/github.com/aptible/mini-collector/<%= ENV.fetch('BINARY_NAME') %> /usr/local/bin/
+EXPOSE 8000
+CMD ["<%= ENV.fetch('BINARY_NAME') %>"]

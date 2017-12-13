@@ -1,1 +1,4 @@
 vendor
+.docker
+mini-collector
+aggregator
