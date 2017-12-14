@@ -1,4 +1,4 @@
-vendor
-.docker
-mini-collector
-aggregator
+./vendor
+./.docker
+./mini-collector
+./aggregator
