@@ -159,7 +159,7 @@ PublishLoop:
 
 func (p *publisher) Queue(ctx context.Context, ts time.Time, point collector.Point) error {
 	payload := api.PublishRequest{
-		UnixTime:      uint64(ts.Unix()),
+		UnixTime:      ts.Unix(),
 		MilliCpuUsage: point.MilliCpuUsage,
 		MemoryTotalMb: point.MemoryTotalMb,
 		MemoryRssMb:   point.MemoryRssMb,

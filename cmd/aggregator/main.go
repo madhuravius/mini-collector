@@ -51,7 +51,7 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 		return nil, fmt.Errorf("no metadata")
 	}
 
-	ts := time.Unix(int64(point.UnixTime), 0)
+	ts := time.Unix(point.UnixTime, 0)
 
 	tags := map[string]string{}
 

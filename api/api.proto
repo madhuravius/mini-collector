@@ -5,7 +5,7 @@ service Aggregator {
 }
 
 message PublishRequest {
-	uint64 unix_time = 1;
+	int64 unix_time = 1;
 	bool running = 2;
 	uint64 milli_cpu_usage = 3;
 	uint64 memory_total_mb = 4;
