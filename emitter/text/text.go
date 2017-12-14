@@ -12,10 +12,13 @@ func New() (*textEmitter, error) {
 	return &textEmitter{}, nil
 }
 
-func (t *textEmitter) Emit(ctx context.Context, batch []batch.Entry) error {
-	for _, entry := range batch {
+func (t *textEmitter) Emit(ctx context.Context, batch batch.Batch) error {
+	for _, entry := range batch.Entries {
 		fmt.Printf("%+v\n", entry)
 	}
 
 	return nil
+}
+
+func (t *textEmitter) Close() {
 }

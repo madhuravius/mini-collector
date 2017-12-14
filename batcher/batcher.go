@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -12,6 +12,10 @@ const (
 	ingestBufferSize = 10
 	emitTimeout      = time.Second
 )
+
+var logger = logrus.WithFields(logrus.Fields{
+	"source": "batcher",
+})
 
 type batcher struct {
 	emitter emitter.Emitter
@@ -45,6 +49,8 @@ func New(emitter emitter.Emitter, minPublishFrequency time.Duration, maxBatchSiz
 }
 
 func (b *batcher) run(ctx context.Context) {
+	var batchId uint64 = 0
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -56,21 +62,26 @@ func (b *batcher) run(ctx context.Context) {
 		nextBatch := func() batch.Batch {
 			batchCtx, cancel := context.WithTimeout(ctx, b.minPublishFrequency)
 			defer cancel()
-			return b.prepareBatch(batchCtx)
+			return b.prepareBatch(batchId, batchCtx)
 		}()
 
 		b.emitBatch(nextBatch)
+
+		batchId++
 	}
 }
 
-func (b *batcher) prepareBatch(ctx context.Context) batch.Batch {
-	currentBatch := make(batch.Batch, 0, b.maxBatchSize)
+func (b *batcher) prepareBatch(id uint64, ctx context.Context) batch.Batch {
+	currentBatch := batch.Batch{
+		Id:      id,
+		Entries: make([]batch.Entry, 0, b.maxBatchSize),
+	}
 
 	for {
 		select {
 		case newEntry := <-b.ingestBuffer:
-			currentBatch = append(currentBatch, *newEntry)
-			if len(currentBatch) >= b.maxBatchSize {
+			currentBatch.Entries = append(currentBatch.Entries, *newEntry)
+			if len(currentBatch.Entries) >= b.maxBatchSize {
 				return currentBatch
 			}
 		case <-ctx.Done():
@@ -80,14 +91,18 @@ func (b *batcher) prepareBatch(ctx context.Context) batch.Batch {
 }
 
 func (b *batcher) emitBatch(batch batch.Batch) {
-	log.Infof("emitting batch (%d entries)", len(batch))
+	logger.WithFields(
+		batch.Fields(),
+	).Infof("Emit: %d entries", len(batch.Entries))
 
 	ctx, cancel := context.WithTimeout(context.Background(), emitTimeout)
 	defer cancel()
 
 	err := b.emitter.Emit(ctx, batch)
 	if err != nil {
-		log.Errorf("emitter did not accept batch (%d entries): %v", len(batch), err)
+		logger.WithFields(
+			batch.Fields(),
+		).Errorf("Emit failed: %v", err)
 	}
 }
 

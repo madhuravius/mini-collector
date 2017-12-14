@@ -21,13 +21,16 @@ func (e *chanEmitter) Emit(ctx context.Context, batch batch.Batch) error {
 	}
 }
 
+func (e *chanEmitter) Close() {
+}
+
 func closeEverything(batcher Batcher, em *chanEmitter) {
 	// The batcher is going to continue to want sending at its minimum
 	// frequency even if we stopped reading from the chanEmitter so we have
 	// to drain the emitter while we close it.
 	go func() {
 		for b := range em.batches {
-			if b == nil {
+			if len(b.Entries) == 0 {
 				break
 			}
 		}
@@ -53,7 +56,7 @@ func TestBatcherEmitsAtMinimumFrequency(t *testing.T) {
 
 	for b := range em.batches {
 		i++
-		assert.Equal(t, 0, len(b))
+		assert.Equal(t, 0, len(b.Entries))
 		if i >= 10 {
 			break
 		}
@@ -79,9 +82,9 @@ func TestBatchEmitsAtMaxBatchSize(t *testing.T) {
 
 	select {
 	case batch := <-em.batches:
-		assert.Equal(t, 10, len(batch))
+		assert.Equal(t, 10, len(batch.Entries))
 		for i := 0; i < 10; i++ {
-			assert.Equal(t, int64(i), batch[i].Time.Unix())
+			assert.Equal(t, int64(i), batch.Entries[i].Time.Unix())
 		}
 	case err := <-ctx.Done():
 		t.Fatalf("batch was not delivered: %v", err)
