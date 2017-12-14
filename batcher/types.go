@@ -7,4 +7,5 @@ import (
 
 type Batcher interface {
 	Ingest(ctx context.Context, entry *batch.Entry) error
+	Close()
 }

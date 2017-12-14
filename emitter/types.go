@@ -6,5 +6,5 @@ import (
 )
 
 type Emitter interface {
-	Emit(ctx context.Context, batch []batch.Entry) error
+	Emit(ctx context.Context, batch batch.Batch) error
 }

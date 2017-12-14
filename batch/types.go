@@ -10,3 +10,5 @@ type Entry struct {
 	Tags map[string]string
 	api.PublishRequest
 }
+
+type Batch = []Entry

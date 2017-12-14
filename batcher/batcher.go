@@ -20,44 +20,68 @@ type batcher struct {
 	maxBatchSize        int
 
 	ingestBuffer chan *batch.Entry
+	doneChannel  chan interface{}
+	cancel       context.CancelFunc
 }
 
 func New(emitter emitter.Emitter, minPublishFrequency time.Duration, maxBatchSize int) Batcher {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	b := &batcher{
 		emitter:             emitter,
 		minPublishFrequency: minPublishFrequency,
 		maxBatchSize:        maxBatchSize,
 		ingestBuffer:        make(chan *batch.Entry, ingestBufferSize),
+		doneChannel:         make(chan interface{}),
+		cancel:              cancel,
 	}
 
-	go b.start()
+	go func() {
+		b.run(ctx)
+		b.doneChannel <- nil
+	}()
 
 	return b
 }
 
-func (b *batcher) start() {
+func (b *batcher) run(ctx context.Context) {
 	for {
-		lastPublish := time.Now()
-		currentBatch := make([]batch.Entry, 0, b.maxBatchSize)
-
-	BatchLoop:
-		for {
-			select {
-			case newEntry := <-b.ingestBuffer:
-				currentBatch = append(currentBatch, *newEntry)
-				if len(currentBatch) >= b.maxBatchSize {
-					break BatchLoop
-				}
-			case <-time.After(time.Until(lastPublish.Add(b.minPublishFrequency))):
-				break BatchLoop
-			}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// no-op: proceed
 		}
 
-		b.emitBatch(currentBatch)
+		nextBatch := func() batch.Batch {
+			batchCtx, cancel := context.WithTimeout(ctx, b.minPublishFrequency)
+			defer cancel()
+			return b.prepareBatch(batchCtx)
+		}()
+
+		b.emitBatch(nextBatch)
 	}
 }
 
-func (b *batcher) emitBatch(batch []batch.Entry) {
+func (b *batcher) prepareBatch(ctx context.Context) batch.Batch {
+	currentBatch := make(batch.Batch, 0, b.maxBatchSize)
+
+	for {
+		select {
+		case newEntry := <-b.ingestBuffer:
+			currentBatch = append(currentBatch, *newEntry)
+			if len(currentBatch) >= b.maxBatchSize {
+				return currentBatch
+			}
+		case <-ctx.Done():
+			return currentBatch
+		}
+	}
+}
+
+func (b *batcher) emitBatch(batch batch.Batch) {
+	log.Infof("emitting batch (%d entries)", len(batch))
+
 	ctx, cancel := context.WithTimeout(context.Background(), emitTimeout)
 	defer cancel()
 
@@ -74,4 +98,9 @@ func (b *batcher) Ingest(ctx context.Context, entry *batch.Entry) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (b *batcher) Close() {
+	b.cancel()
+	<-b.doneChannel
 }
