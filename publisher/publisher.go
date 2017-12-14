@@ -13,7 +13,7 @@ import (
 
 const (
 	maxBackoffDuration    = 5 * time.Second
-	defaultPublishTimeout = 2 * time.Second
+	defaultPublishTimeout = 4 * time.Second
 	defaultBufferSize     = 10
 )
 
