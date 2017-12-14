@@ -121,7 +121,18 @@ func main() {
 
 MainLoop:
 	for {
+		// NOTE: If we were delayed (publisher.Queue() will wait of
+		// the timeout if the queue is full), we might have a lot of
+		// catching up to do. To avoid actually querying points during
+		// this interval, we just skip to now if that's after our next
+		// poll.
+		// TODO: break out time keeping and polling to avoid this
+		// complexity.
+		now := time.Now()
 		nextPoll := lastPoll.Add(pollInterval)
+		if now.After(nextPoll) {
+			nextPoll = now
+		}
 
 		select {
 		case <-time.After(time.Until(nextPoll)):
