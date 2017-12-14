@@ -6,7 +6,7 @@ deps:
 	dep ensure
 
 .PHONY: build
-build: $(GOFILES)
+build: $(GOFILES_NOVENDOR)
 	go list ./...  | grep cmd | xargs -P $$(nproc) -n 1 -- go build -i
 
 
@@ -14,7 +14,7 @@ api/api.pb.go: api/api.proto
 	protoc -I api/ api/api.proto --go_out=plugins=grpc:api
 
 .PHONY: unit
-unit:
+unit: $(GOFILES_NOVENDOR)
 	go test $$(go list ./... | grep -v /vendor/)
 	go vet $$(go list ./... | grep -v /vendor/)
 
