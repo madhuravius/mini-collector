@@ -7,7 +7,7 @@ deps:
 
 .PHONY: build
 build: $(GOFILES)
-	go list ./...  | grep cmd | xargs -P $$(nproc) -n 1 go build -i
+	go list ./...  | grep cmd | xargs -P $$(nproc) -n 1 -- go build -i
 
 
 api/api.pb.go: api/api.proto
@@ -20,7 +20,7 @@ unit:
 
 .PHONY: test
 test: unit
-	true
+	@true
 
 .PHONY: fmt
 fmt:
