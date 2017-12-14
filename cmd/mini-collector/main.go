@@ -105,10 +105,10 @@ func main() {
 			Tags:          tags,
 		},
 	)
-
 	if err != nil {
 		log.Fatalf("Open failed: %v", err)
 	}
+	defer publisher.Close()
 
 	c := collector.NewCollector(cgroupPath, containerId, mountPath)
 
@@ -139,7 +139,7 @@ MainLoop:
 			err = func() error {
 				ctx, cancel := context.WithTimeout(context.Background(), queueTimeout)
 				defer cancel()
-				return publisher.Queue(ctx, lastState.Time, point)
+				return publisher.Queue(ctx, thisState.Time, point)
 			}()
 
 			if err != nil {
@@ -151,6 +151,4 @@ MainLoop:
 			break MainLoop
 		}
 	}
-
-	publisher.Close()
 }

@@ -17,7 +17,7 @@ const (
 
 var testConfig *Config = &Config{
 	ServerAddress:  "not-actually-used",
-	PublishTimeout: 10 * time.Millisecond,
+	PublishTimeout: 1 * time.Millisecond,
 }
 
 func createMockGrpcConnection(ctx context.Context, serverAddress string, dialOption grpc.DialOption) (*grpc.ClientConn, error) {
@@ -52,7 +52,7 @@ func (p *mockErrorClient) Publish(ctx context.Context, req *api.PublishRequest, 
 
 func TestPublisherCloseReturns(t *testing.T) {
 	pub := mustOpen(testConfig, createMockGrpcConnection, createMockErrorClient)
-	pub.Close()
+	defer pub.Close()
 }
 
 func TestPublisherSucceeds(t *testing.T) {
@@ -60,6 +60,8 @@ func TestPublisherSucceeds(t *testing.T) {
 	f := func(cc *grpc.ClientConn) api.AggregatorClient { return client }
 
 	pub := mustOpen(testConfig, createMockGrpcConnection, f)
+	defer pub.Close()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
@@ -75,7 +77,9 @@ func TestPublisherRetriesAndRateLimits(t *testing.T) {
 	f := func(cc *grpc.ClientConn) api.AggregatorClient { return client }
 
 	pub := mustOpen(testConfig, createMockGrpcConnection, f)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer pub.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
 	pub.Queue(ctx, time.Now(), collector.Point{})
