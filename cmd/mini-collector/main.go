@@ -117,7 +117,7 @@ func main() {
 	log.Infof("mountPath: %s", mountPath)
 
 	lastPoll := time.Now()
-	lastState := collector.MakeNoContainerState()
+	lastState := collector.MakeNoContainerState(lastPoll)
 
 MainLoop:
 	for {

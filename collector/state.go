@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-func MakeNoContainerState() State {
+func MakeNoContainerState(time time.Time) State {
 	return State{
-		Time:                time.Now(),
+		Time:                time,
 		AccumulatedCpuUsage: MaxUint64,
 	}
 }

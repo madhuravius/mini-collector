@@ -21,9 +21,24 @@ type collector struct {
 	statsBuffer cgroups.Stats
 	fsBuffer    syscall.Statfs_t
 	subsystems  []subsystem
+	clock       clock
+}
+
+type clock interface {
+	Now() time.Time
+}
+
+type realClock struct{}
+
+func (rc *realClock) Now() time.Time {
+	return time.Now()
 }
 
 func NewCollector(cgroupPath string, dockerName string, mountPath string) Collector {
+	return newCollector(cgroupPath, dockerName, mountPath)
+}
+
+func newCollector(cgroupPath string, dockerName string, mountPath string) *collector {
 	statsBuffer := *cgroups.NewStats()
 
 	subsystems := []subsystem{
@@ -39,10 +54,13 @@ func NewCollector(cgroupPath string, dockerName string, mountPath string) Collec
 		statsBuffer: statsBuffer,
 		fsBuffer:    syscall.Statfs_t{},
 		subsystems:  subsystems,
+		clock:       &realClock{},
 	}
 }
 
 func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) {
+	pollTime := c.clock.Now()
+
 	for _, subsys := range c.subsystems {
 		cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, subsys.Name(), c.dockerName)
 
@@ -50,21 +68,23 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 
 		if err != nil {
 			if os.IsNotExist(err) {
-				return CgroupPoint{Running: false}, MakeNoContainerState(), nil
+				return CgroupPoint{Running: false}, MakeNoContainerState(pollTime), nil
 			}
 			return CgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", subsys.Name(), err)
 		}
 	}
 
-	pollTime := time.Now()
-
 	accumulatedCpuUsage := c.statsBuffer.CpuStats.CpuUsage.TotalUsage
 
 	var milliCpuUsage uint64
 	if accumulatedCpuUsage > lastState.AccumulatedCpuUsage {
-		elapsedCpu := float64(accumulatedCpuUsage - lastState.AccumulatedCpuUsage)
-		elapsedTime := float64(pollTime.Sub(lastState.Time).Nanoseconds())
-		milliCpuUsage = uint64(1000 * elapsedCpu / elapsedTime)
+		elapsedCpu := accumulatedCpuUsage - lastState.AccumulatedCpuUsage
+		elapsedTime := pollTime.Sub(lastState.Time).Nanoseconds()
+		if elapsedTime > 0 {
+			milliCpuUsage = uint64(1000 * float64(elapsedCpu) / float64(elapsedTime))
+		} else {
+			milliCpuUsage = 0
+		}
 	} else {
 		milliCpuUsage = 0
 	}
