@@ -22,7 +22,7 @@ func entryToFields(entry *batch.Entry) map[string]interface{} {
 	}
 }
 
-func buildBatchPoints(database string, batch []batch.Entry) client.BatchPoints {
+func buildBatchPoints(database string, entries []batch.Entry) client.BatchPoints {
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 		Database:  database,
 		Precision: "s",
@@ -34,7 +34,7 @@ func buildBatchPoints(database string, batch []batch.Entry) client.BatchPoints {
 		log.Fatalf("could not build batch points: %+v", err)
 	}
 
-	for _, entry := range batch {
+	for _, entry := range entries {
 		fields := entryToFields(&entry)
 
 		pt, err := client.NewPoint("metrics", entry.Tags, fields, entry.Time)
