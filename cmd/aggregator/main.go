@@ -16,7 +16,7 @@ import (
 	"github.com/aptible/mini-collector/writer/datadog"
 	"github.com/aptible/mini-collector/writer/influxdb"
 	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -43,6 +43,10 @@ var (
 		"app",
 		"database",
 	}
+
+	logger = logrus.WithFields(logrus.Fields{
+		"source": "server",
+	})
 )
 
 type server struct {
@@ -83,7 +87,7 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 	})
 
 	if err != nil {
-		log.Warnf("Ingest failed: %v", err)
+		logger.Warnf("Ingest failed: %v", err)
 	}
 
 	return &api.PublishResponse{}, nil
@@ -148,7 +152,7 @@ func getEmitter() (emitter.Emitter, func(), error) {
 		return nil, nil, fmt.Errorf("could not decode Datadog configuration: %v", err)
 	}
 	if ok {
-		log.Infof("using Datadog writer")
+		logger.Infof("using Datadog writer")
 		return stackWriters(func() (writer.CloseWriter, error) {
 			return datadog.Open(datadogConfig)
 		}, "Datadog", 3)
@@ -160,7 +164,7 @@ func getEmitter() (emitter.Emitter, func(), error) {
 		return nil, nil, fmt.Errorf("could not decode InfluxDB configuration: %v", err)
 	}
 	if ok {
-		log.Infof("using InfluxDB writer")
+		logger.Infof("using InfluxDB writer")
 		return stackWriters(func() (writer.CloseWriter, error) {
 			return influxdb.Open(influxdbConfig)
 		}, "InfluxDB", 3)
@@ -168,7 +172,7 @@ func getEmitter() (emitter.Emitter, func(), error) {
 
 	_, ok = os.LookupEnv("AGGREGATOR_TEXT_CONFIGURATION")
 	if ok {
-		log.Infof("using text emitter")
+		logger.Infof("using text emitter")
 		em := text.Open()
 		return em, em.Close, nil
 	}
@@ -187,7 +191,7 @@ func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
 		return nil, fmt.Errorf("invalid minimum publish frequency (%s): %v", minPublishFrequencyText, err)
 	}
 
-	log.Infof("minPublishFrequency: %v", minPublishFrequency)
+	logger.Infof("minPublishFrequency: %v", minPublishFrequency)
 
 	// TODO: Make batchsize configurable?
 	return batcher.New(em, minPublishFrequency, 1000), nil
@@ -195,25 +199,25 @@ func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
 }
 
 func main() {
-	grpcLogrus.ReplaceGrpcLogger(log.NewEntry(log.StandardLogger()))
+	grpcLogrus.ReplaceGrpcLogger(logger)
 
 	emitter, closeCallback, err := getEmitter()
 	if err != nil {
-		log.Fatalf("getEmitterStack failed: %v", err)
+		logger.Fatalf("getEmitterStack failed: %v", err)
 	}
 	defer closeCallback()
 
 	batcher, err := getBatcher(emitter)
 	if err != nil {
-		log.Fatalf("getBatcher failed: %v", err)
+		logger.Fatalf("getBatcher failed: %v", err)
 	}
 	defer batcher.Close()
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("failed to listen: %v", err)
 	}
-	log.Infof("listening on: %s", port)
+	logger.Infof("listening on: %s", port)
 
 	var srv *grpc.Server
 
@@ -221,13 +225,13 @@ func main() {
 	if enableTls {
 		tlsConfig, err := tls.GetTlsConfig("AGGREGATOR")
 		if err != nil {
-			log.Fatalf("failed to load tlsConfig: %v", err)
+			logger.Fatalf("failed to load tlsConfig: %v", err)
 		}
 
-		log.Info("tls is enabled")
+		logger.Info("tls is enabled")
 		srv = grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
 	} else {
-		log.Warn("tls is disabled")
+		logger.Warn("tls is disabled")
 		srv = grpc.NewServer()
 	}
 
@@ -243,13 +247,13 @@ func main() {
 
 	go func() {
 		termSig := <-termChan
-		log.Infof("received %s, shutting down", termSig)
+		logger.Infof("received %s, shutting down", termSig)
 		srv.GracefulStop()
 	}()
 
 	if err := srv.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Fatalf("failed to serve: %v", err)
 	}
 
-	log.Infof("server shutdown")
+	logger.Infof("server shutdown")
 }
