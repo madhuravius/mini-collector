@@ -1,22 +1,22 @@
 package hold
 
 import (
-	"time"
-	"testing"
 	"context"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 type testEmitter struct {
-	batches chan(batch.Batch)
+	batches chan (batch.Batch)
 }
 
 func (em *testEmitter) Emit(ctx context.Context, batch batch.Batch) error {
 	select {
 	case em.batches <- batch:
 		return nil
-	case <- ctx.Done():
+	case <-ctx.Done():
 		return ctx.Err()
 	}
 }
@@ -27,7 +27,7 @@ func (em *testEmitter) Close() {
 
 func TestItHoldsThenReleasesTheBatch(t *testing.T) {
 	next := &testEmitter{batches: make(chan batch.Batch, 1)}
-	em := MustOpen(4 * time.Millisecond, next)
+	em := Open(4*time.Millisecond, next)
 	defer em.Close()
 
 	sent := batch.Batch{Id: 123}
@@ -37,13 +37,13 @@ func TestItHoldsThenReleasesTheBatch(t *testing.T) {
 		select {
 		case <-next.batches:
 			t.Fatal("got it too fast")
-		case <- time.After(2 * time.Millisecond):
+		case <-time.After(2 * time.Millisecond):
 		}
 
 		select {
 		case got := <-next.batches:
 			assert.Equal(t, sent.Id, got.Id)
-		case <- time.After(4 * time.Millisecond):
+		case <-time.After(4 * time.Millisecond):
 			t.Fatal("got it too slow")
 		}
 	}
@@ -51,7 +51,7 @@ func TestItHoldsThenReleasesTheBatch(t *testing.T) {
 
 func TestItReleasesAllBatchesWhenClosing(t *testing.T) {
 	next := &testEmitter{batches: make(chan batch.Batch, 1)}
-	em := MustOpen(4 * time.Millisecond, next)
+	em := Open(4*time.Millisecond, next)
 
 	err := em.Emit(context.Background(), batch.Batch{})
 
@@ -60,7 +60,7 @@ func TestItReleasesAllBatchesWhenClosing(t *testing.T) {
 
 		select {
 		case <-next.batches:
-		case <- time.After(1 * time.Millisecond):
+		case <-time.After(1 * time.Millisecond):
 			t.Fatal("got it too slow")
 		}
 	}
@@ -68,7 +68,7 @@ func TestItReleasesAllBatchesWhenClosing(t *testing.T) {
 
 func TestItEventuallyGivesUp(t *testing.T) {
 	next := &testEmitter{batches: make(chan batch.Batch)}
-	em := MustOpen(4 * time.Millisecond, next).(*holdEmitter)
+	em := Open(4*time.Millisecond, next).(*holdEmitter)
 	em.delegateTimeout = time.Millisecond
 
 	err := em.Emit(context.Background(), batch.Batch{})

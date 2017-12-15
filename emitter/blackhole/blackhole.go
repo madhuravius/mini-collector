@@ -9,16 +9,8 @@ import (
 
 type blackholeEmitter struct{}
 
-func Open() (emitter.Emitter, error) {
-	return &blackholeEmitter{}, nil
-}
-
-func MustOpen() emitter.Emitter {
-	em, err := Open()
-	if err != nil {
-		panic(err)
-	}
-	return em
+func Open() emitter.Emitter {
+	return &blackholeEmitter{}
 }
 
 func (e *blackholeEmitter) Emit(ctx context.Context, batch batch.Batch) error {

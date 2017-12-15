@@ -1,12 +1,11 @@
-package influxdb
+package writer
 
 import (
 	"context"
 	"fmt"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter"
-	client "github.com/influxdata/influxdb/client/v2"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -15,12 +14,11 @@ const (
 	drainTimeout = 2 * time.Second
 )
 
-type influxdbEmitter struct {
-	logger *log.Entry
+type writerEmitter struct {
+	logger *logrus.Entry
 
-	client      InfluxdbClient
+	writer      Writer
 	nextEmitter emitter.Emitter
-	database    string
 
 	sendBuffer chan batch.Batch
 
@@ -28,31 +26,17 @@ type influxdbEmitter struct {
 	cancel      context.CancelFunc
 }
 
-func Open(name string, config *Config, nextEmitter emitter.Emitter) (emitter.Emitter, error) {
-	client, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr:     config.Address,
-		Username: config.Username,
-		Password: config.Password,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("invalid InfluxDb configuration: %v", err)
-	}
-
-	return open(name, client, config.Database, nextEmitter), nil
-}
-
-func open(name string, client InfluxdbClient, database string, nextEmitter emitter.Emitter) *influxdbEmitter {
+// TODO: Update all!
+func Open(name string, writer Writer, nextEmitter emitter.Emitter) emitter.Emitter {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	em := &influxdbEmitter{
-		logger: log.WithFields(log.Fields{
+	em := &writerEmitter{
+		logger: logrus.WithFields(logrus.Fields{
 			"source":  "emitter",
 			"emitter": name,
 		}),
 
-		client:     client,
-		database:   database,
+		writer:     writer,
 		sendBuffer: make(chan batch.Batch, bufferSize),
 
 		nextEmitter: nextEmitter,
@@ -60,15 +44,12 @@ func open(name string, client InfluxdbClient, database string, nextEmitter emitt
 		cancel:      cancel,
 	}
 
-	go func() {
-		defer client.Close()
-		em.run(ctx)
-	}()
+	go em.run(ctx)
 
 	return em
 }
 
-func (e *influxdbEmitter) Emit(ctx context.Context, batch batch.Batch) error {
+func (e *writerEmitter) Emit(ctx context.Context, batch batch.Batch) error {
 	if len(batch.Entries) <= 0 {
 		// Nothing to emit, skip it.
 		e.logger.WithFields(
@@ -85,10 +66,12 @@ func (e *influxdbEmitter) Emit(ctx context.Context, batch batch.Batch) error {
 	}
 }
 
-func (e *influxdbEmitter) run(ctx context.Context) {
+func (e *writerEmitter) run(ctx context.Context) {
 	e.logger.Infof("starting")
 
 	for {
+		// TODO: is this really the right ctx to use here? Presumably
+		// we should layer on some emit timeout?
 		if e.runOnce(ctx) {
 			break
 		}
@@ -104,10 +87,12 @@ func (e *influxdbEmitter) run(ctx context.Context) {
 		e.drainSendBuffer(drainCtx)
 	}()
 
+	e.logger.Infof("shut down")
+
 	e.doneChannel <- nil
 }
 
-func (e *influxdbEmitter) runOnce(ctx context.Context) bool {
+func (e *writerEmitter) runOnce(ctx context.Context) bool {
 	select {
 	case batch := <-e.sendBuffer:
 		e.sendOrDelegateToNextEmitter(ctx, batch)
@@ -117,7 +102,7 @@ func (e *influxdbEmitter) runOnce(ctx context.Context) bool {
 	}
 }
 
-func (e *influxdbEmitter) drainSendBuffer(ctx context.Context) error {
+func (e *writerEmitter) drainSendBuffer(ctx context.Context) error {
 	for {
 		select {
 		case batch := <-e.sendBuffer:
@@ -128,7 +113,7 @@ func (e *influxdbEmitter) drainSendBuffer(ctx context.Context) error {
 	}
 }
 
-func (e *influxdbEmitter) sendOrDelegateToNextEmitter(ctx context.Context, batch batch.Batch) {
+func (e *writerEmitter) sendOrDelegateToNextEmitter(ctx context.Context, batch batch.Batch) {
 	err := e.sendBatch(batch)
 
 	if err != nil {
@@ -136,17 +121,17 @@ func (e *influxdbEmitter) sendOrDelegateToNextEmitter(ctx context.Context, batch
 			batch.Fields(),
 		).Warnf("sendBatch failed: %v", err)
 
+		// TODO: Log an error here
 		e.nextEmitter.Emit(ctx, batch)
 	}
 }
 
-func (e *influxdbEmitter) sendBatch(batch batch.Batch) error {
+func (e *writerEmitter) sendBatch(batch batch.Batch) error {
 	e.logger.WithFields(
 		batch.Fields(),
 	).Debugf("sendBatch")
 
-	bp := buildBatchPoints(e.database, batch.Entries)
-	err := e.client.Write(bp)
+	err := e.writer.Write(batch)
 
 	if err != nil {
 		return fmt.Errorf("Write failed: %v", err)
@@ -159,7 +144,7 @@ func (e *influxdbEmitter) sendBatch(batch batch.Batch) error {
 	return nil
 }
 
-func (e *influxdbEmitter) Close() {
+func (e *writerEmitter) Close() {
 	e.cancel()
 	<-e.doneChannel
 }

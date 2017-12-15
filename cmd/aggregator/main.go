@@ -9,9 +9,10 @@ import (
 	"github.com/aptible/mini-collector/batcher"
 	"github.com/aptible/mini-collector/emitter"
 	"github.com/aptible/mini-collector/emitter/blackhole"
-	"github.com/aptible/mini-collector/emitter/influxdb"
 	"github.com/aptible/mini-collector/emitter/text"
+	"github.com/aptible/mini-collector/emitter/writer"
 	"github.com/aptible/mini-collector/tls"
+	"github.com/aptible/mini-collector/writer/influxdb"
 	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -84,59 +85,65 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 	return &api.PublishResponse{}, nil
 }
 
-func makeNestedInfluxdbClients(config *influxdb.Config, count int) ([]emitter.Emitter, error) {
-	name := fmt.Sprintf("InfluxDB %d", count)
+func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix string, count int) (emitter.Emitter, func(), error) {
+	name := fmt.Sprintf("%s %d", namePrefix, count)
+
+	w, err := writerFactory()
+	if err != nil {
+		return nil, nil, fmt.Errorf("writerFactory failed: %v", err)
+	}
 
 	if count <= 1 {
-		em, err := influxdb.Open(name, config, blackhole.MustOpen())
-		if err != nil {
-			return []emitter.Emitter{}, err
-		}
-
-		stack := make([]emitter.Emitter, 0)
-		return append(stack, em), nil
+		em := writer.Open(name, w, blackhole.Open())
+		return em, func() {
+			em.Close()
+			w.Close()
+		}, nil
 	}
 
-	stack, err := makeNestedInfluxdbClients(config, count-1)
+	nextCount := count - 1
+	nextEmitter, closeNext, err := stackWriters(writerFactory, namePrefix, nextCount)
+
 	if err != nil {
-		return stack, err
+		w.Close()
+		return nil, nil, fmt.Errorf("stackWriters(%d) failed: %v", nextCount, err)
 	}
 
-	nextEm := stack[len(stack)-1]
-	em, err := influxdb.Open(name, config, nextEm)
-	if err != nil {
-		return stack, err
-	}
+	em := writer.Open(name, w, nextEmitter)
 
-	return append(stack, em), nil
+	return em, func() {
+		em.Close()
+		w.Close()
+		closeNext()
+	}, nil
 }
 
-func getEmitterStack() ([]emitter.Emitter, error) {
+func getEmitter() (emitter.Emitter, func(), error) {
 	influxDbConfiguration, ok := os.LookupEnv("AGGREGATOR_INFLUXDB_CONFIGURATION")
 	if ok {
-		log.Infof("using InfluxDB emitter")
+		log.Infof("using InfluxDB writer")
 
 		config := &influxdb.Config{}
 		err := json.Unmarshal([]byte(influxDbConfiguration), &config)
 		if err != nil {
-			return []emitter.Emitter{}, fmt.Errorf("could not decode InfluxDB configuration: %v", err)
+			return nil, nil, fmt.Errorf("could not decode InfluxDB configuration: %v", err)
 		}
 
-		return makeNestedInfluxdbClients(config, 3)
+		writerFactory := func() (writer.CloseWriter, error) {
+			return influxdb.Open(config)
+		}
+
+		return stackWriters(writerFactory, "InfluxDB", 3)
 	}
 
 	_, ok = os.LookupEnv("AGGREGATOR_TEXT_CONFIGURATION")
 	if ok {
 		log.Infof("using text emitter")
-		em, err := text.New()
-		if err != nil {
-			return []emitter.Emitter{}, fmt.Errorf("failed to build text emitter: %v", err)
-		}
-
-		return []emitter.Emitter{em}, nil
+		em := text.Open()
+		return em, em.Close, nil
 	}
 
-	return []emitter.Emitter{}, fmt.Errorf("no emitter configured")
+	return nil, nil, fmt.Errorf("no emitter configured")
 }
 
 func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
@@ -152,6 +159,7 @@ func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
 
 	log.Infof("minPublishFrequency: %v", minPublishFrequency)
 
+	// TODO: Make batchsize configurable?
 	return batcher.New(em, minPublishFrequency, 1000), nil
 
 }
@@ -159,21 +167,13 @@ func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
 func main() {
 	grpcLogrus.ReplaceGrpcLogger(log.NewEntry(log.StandardLogger()))
 
-	emitterStack, err := getEmitterStack()
+	emitter, closeCallback, err := getEmitter()
 	if err != nil {
 		log.Fatalf("getEmitterStack failed: %v", err)
 	}
+	defer closeCallback()
 
-	for _, em := range emitterStack {
-		// Deferred execute in reverse order of definition, so the
-		// first emitter to Close will be the last one (the front
-		// emitter), which is what we want.
-		defer em.Close()
-	}
-
-	frontEmitter := emitterStack[len(emitterStack)-1]
-
-	batcher, err := getBatcher(frontEmitter)
+	batcher, err := getBatcher(emitter)
 	if err != nil {
 		log.Fatalf("getBatcher failed: %v", err)
 	}

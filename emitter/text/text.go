@@ -8,8 +8,8 @@ import (
 
 type textEmitter struct{}
 
-func New() (*textEmitter, error) {
-	return &textEmitter{}, nil
+func Open() *textEmitter {
+	return &textEmitter{}
 }
 
 func (t *textEmitter) Emit(ctx context.Context, batch batch.Batch) error {

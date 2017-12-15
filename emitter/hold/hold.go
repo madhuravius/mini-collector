@@ -2,12 +2,12 @@ package hold
 
 import (
 	"context"
-	"sync"
 	"fmt"
-	"time"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter"
 	"github.com/sirupsen/logrus"
+	"sync"
+	"time"
 )
 
 const (
@@ -18,41 +18,33 @@ type holdEmitter struct {
 	logger *logrus.Entry
 
 	nextEmitter emitter.Emitter
-	delay time.Duration
+	delay       time.Duration
 
 	delegateTimeout time.Duration
 
 	context context.Context
-	cancel context.CancelFunc
-	wg sync.WaitGroup
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
-func Open(delay time.Duration, nextEmitter emitter.Emitter) (emitter.Emitter, error) {
+func Open(delay time.Duration, nextEmitter emitter.Emitter) emitter.Emitter {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &holdEmitter{
 		logger: logrus.WithFields(logrus.Fields{
-			"source": "emitter",
+			"source":  "emitter",
 			"emitter": fmt.Sprintf("hold for %s", delay),
 		}),
 
 		nextEmitter: nextEmitter,
-		delay: delay,
+		delay:       delay,
 
 		delegateTimeout: defaultDelegateTimeout,
 
 		context: ctx,
-		cancel: cancel,
-		wg: sync.WaitGroup{},
-	}, nil
-}
-
-func MustOpen(delay time.Duration, nextEmitter emitter.Emitter) emitter.Emitter {
-	em, err := Open(delay, nextEmitter)
-	if err != nil {
-		panic(err)
+		cancel:  cancel,
+		wg:      sync.WaitGroup{},
 	}
-	return em
 }
 
 func (em *holdEmitter) Emit(ctx context.Context, batch batch.Batch) error {
@@ -78,9 +70,9 @@ func (em *holdEmitter) Close() {
 
 func (em *holdEmitter) holdThenDelegateToNextEmitter(batch batch.Batch) {
 	select {
-	case <- em.context.Done():
+	case <-em.context.Done():
 		// We're closing, stop holding!
-	case <- time.After(em.delay):
+	case <-time.After(em.delay):
 		// We're done waiting for this one.:w
 	}
 

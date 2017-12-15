@@ -1,11 +1,10 @@
-package influxdb
+package writer
 
 import (
 	"context"
 	"fmt"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter/blackhole"
-	client "github.com/influxdata/influxdb/client/v2"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -15,32 +14,24 @@ var (
 	writeTimeout = 5 * time.Millisecond
 )
 
-type errorClient struct{}
+type errorWriter struct{}
 
-func (c *errorClient) Write(bp client.BatchPoints) error {
+func (c *errorWriter) Write(batch batch.Batch) error {
 	return fmt.Errorf("permanent failure")
 }
 
-func (c *errorClient) Close() error {
-	return nil
+type successWriter struct {
+	writes chan (batch.Batch)
 }
 
-type successClient struct {
-	writes chan (client.BatchPoints)
-}
-
-func (c *successClient) Write(bp client.BatchPoints) error {
-	c.writes <- bp
-	return nil
-}
-
-func (c *successClient) Close() error {
+func (c *successWriter) Write(batch batch.Batch) error {
+	c.writes <- batch
 	return nil
 }
 
 func TestEmitEmptyBatchDoesNotDoAnything(t *testing.T) {
-	c := &successClient{writes: make(chan client.BatchPoints)}
-	em := open("em", c, "myDb", blackhole.MustOpen())
+	c := &successWriter{writes: make(chan batch.Batch)}
+	em := Open("em", c, blackhole.Open())
 	defer em.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
@@ -58,8 +49,8 @@ func TestEmitEmptyBatchDoesNotDoAnything(t *testing.T) {
 }
 
 func TestEmitSendsToInfluxdb(t *testing.T) {
-	c := &successClient{writes: make(chan client.BatchPoints)}
-	em := open("em", c, "myDb", blackhole.MustOpen())
+	c := &successWriter{writes: make(chan batch.Batch)}
+	em := Open("em", c, blackhole.Open())
 	defer em.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
@@ -73,10 +64,9 @@ func TestEmitSendsToInfluxdb(t *testing.T) {
 
 	if assert.Nil(t, err) {
 		select {
-		case write := <-c.writes:
-			assert.Equal(t, 1, len(write.Points()))
-			point := (*write.Points()[0])
-			assert.Equal(t, t0, point.Time())
+		case b := <-c.writes:
+			assert.Equal(t, 1, len(b.Entries))
+			assert.Equal(t, t0, b.Entries[0].Time)
 		case <-ctx.Done():
 			t.Fatalf("did not receive write")
 		}
@@ -86,12 +76,12 @@ func TestEmitSendsToInfluxdb(t *testing.T) {
 func TestEmitterPassesToNextEmitter(t *testing.T) {
 	n := 2
 
-	c0 := &successClient{writes: make(chan client.BatchPoints)}
-	em0 := open("em0", c0, "mydb", blackhole.MustOpen())
+	c0 := &successWriter{writes: make(chan batch.Batch)}
+	em0 := Open("em0", c0, blackhole.Open())
 	defer em0.Close()
 
-	c1 := &errorClient{}
-	em1 := open("em0", c1, "mydb", em0)
+	c1 := &errorWriter{}
+	em1 := Open("em0", c1, em0)
 	defer em1.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
