@@ -41,7 +41,7 @@ func closeEverything(batcher Batcher, em *chanEmitter) {
 }
 
 func TestBatcherCloses(t *testing.T) {
-	em := &chanEmitter{batches: make(chan batch.Batch)}
+	em := &chanEmitter{batches: make(chan batch.Batch, 1)}
 	b := New(em, time.Hour, 10)
 	b.Close()
 }
@@ -68,7 +68,7 @@ func TestBatcherEmitsAtMinimumFrequency(t *testing.T) {
 	assert.True(t, t1.Sub(t0) < 20*time.Millisecond)
 }
 
-func TestBatchEmitsAtMaxBatchSize(t *testing.T) {
+func TestBatcherEmitsAtMaxBatchSize(t *testing.T) {
 	em := &chanEmitter{batches: make(chan batch.Batch)}
 	b := New(em, time.Hour, 10)
 	defer closeEverything(b, em)

@@ -69,6 +69,8 @@ func (b *batcher) run(ctx context.Context) {
 
 		batchId++
 	}
+
+	// TODO: Need to drainBatch without the cancelled context here!
 }
 
 func (b *batcher) prepareBatch(id uint64, ctx context.Context) batch.Batch {
@@ -107,6 +109,8 @@ func (b *batcher) emitBatch(batch batch.Batch) {
 }
 
 func (b *batcher) Ingest(ctx context.Context, entry *batch.Entry) error {
+	// TODO: Same as everywhere, we need to stop Ingesting when we are
+	// Closed!
 	select {
 	case b.ingestBuffer <- entry:
 		return nil
