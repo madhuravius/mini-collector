@@ -116,6 +116,8 @@ func (b *batcher) Ingest(ctx context.Context, entry *batch.Entry) error {
 }
 
 func (b *batcher) Close() {
+	logger.Info("shutting down")
 	b.cancel()
 	<-b.doneChannel
+	logger.Info("shut down")
 }

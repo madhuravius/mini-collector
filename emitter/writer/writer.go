@@ -77,7 +77,7 @@ func (e *writerEmitter) run(ctx context.Context) {
 		}
 	}
 
-	e.logger.Infof("shutting down")
+	e.logger.Infof("draining send buffer")
 
 	// TODO: Should prevent further Emits at this stage.
 	func() {
@@ -86,8 +86,6 @@ func (e *writerEmitter) run(ctx context.Context) {
 
 		e.drainSendBuffer(drainCtx)
 	}()
-
-	e.logger.Infof("shut down")
 
 	e.doneChannel <- nil
 }
@@ -145,6 +143,8 @@ func (e *writerEmitter) sendBatch(batch batch.Batch) error {
 }
 
 func (e *writerEmitter) Close() {
+	e.logger.Info("shutting down")
 	e.cancel()
 	<-e.doneChannel
+	e.logger.Info("shut down")
 }

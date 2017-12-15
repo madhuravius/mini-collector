@@ -64,8 +64,10 @@ func (em *holdEmitter) Emit(ctx context.Context, batch batch.Batch) error {
 func (em *holdEmitter) Close() {
 	// TODO: This will race with Emit. More broadly speaking, you can call
 	// Close() *then* Emit().
+	em.logger.Info("shutting down")
 	em.cancel()
 	em.wg.Wait()
+	em.logger.Info("shut down")
 }
 
 func (em *holdEmitter) holdThenDelegateToNextEmitter(batch batch.Batch) {

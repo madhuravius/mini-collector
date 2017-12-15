@@ -9,11 +9,12 @@ import (
 	"github.com/aptible/mini-collector/batcher"
 	"github.com/aptible/mini-collector/emitter"
 	"github.com/aptible/mini-collector/emitter/blackhole"
+	"github.com/aptible/mini-collector/emitter/hold"
 	"github.com/aptible/mini-collector/emitter/text"
 	"github.com/aptible/mini-collector/emitter/writer"
 	"github.com/aptible/mini-collector/tls"
-	"github.com/aptible/mini-collector/writer/influxdb"
 	"github.com/aptible/mini-collector/writer/datadog"
+	"github.com/aptible/mini-collector/writer/influxdb"
 	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -22,6 +23,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -110,49 +113,57 @@ func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix s
 		return nil, nil, fmt.Errorf("stackWriters(%d) failed: %v", nextCount, err)
 	}
 
-	em := writer.Open(name, w, nextEmitter)
+	// TODO: Backoff based on count
+	holdEmitter := hold.Open(5*time.Second, nextEmitter)
+
+	em := writer.Open(name, w, holdEmitter)
 
 	return em, func() {
 		em.Close()
 		w.Close()
+		holdEmitter.Close()
 		closeNext()
 	}, nil
 }
 
-func getEmitter() (emitter.Emitter, func(), error) {
-	// TODO: Extract this into a function shared by writers
-	datadogConfiguration, ok := os.LookupEnv("AGGREGATOR_DATADOG_CONFIGURATION")
-	if ok {
-		log.Infof("using Datadog writer")
-
-		config := &datadog.Config{}
-		err := json.Unmarshal([]byte(datadogConfiguration), &config)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not decode Datadog configuration: %v", err)
-		}
-
-		writerFactory := func() (writer.CloseWriter, error) {
-			return datadog.Open(config)
-		}
-
-		return stackWriters(writerFactory, "Datadog", 3)
+func tryLoadConfiguration(envVariable string, configStruct interface{}) (bool, error) {
+	jsonConfiguration, ok := os.LookupEnv(envVariable)
+	if !ok {
+		return false, nil
 	}
 
-	influxDbConfiguration, ok := os.LookupEnv("AGGREGATOR_INFLUXDB_CONFIGURATION")
+	err := json.Unmarshal([]byte(jsonConfiguration), configStruct)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+
+}
+
+func getEmitter() (emitter.Emitter, func(), error) {
+	datadogConfig := &datadog.Config{}
+	ok, err := tryLoadConfiguration("AGGREGATOR_DATADOG_CONFIGURATION", datadogConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not decode Datadog configuration: %v", err)
+	}
+	if ok {
+		log.Infof("using Datadog writer")
+		return stackWriters(func() (writer.CloseWriter, error) {
+			return datadog.Open(datadogConfig)
+		}, "Datadog", 3)
+	}
+
+	influxdbConfig := &influxdb.Config{}
+	ok, err = tryLoadConfiguration("AGGREGATOR_INFLUXDB_CONFIGURATION", influxdbConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not decode InfluxDB configuration: %v", err)
+	}
 	if ok {
 		log.Infof("using InfluxDB writer")
-
-		config := &influxdb.Config{}
-		err := json.Unmarshal([]byte(influxDbConfiguration), &config)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not decode InfluxDB configuration: %v", err)
-		}
-
-		writerFactory := func() (writer.CloseWriter, error) {
-			return influxdb.Open(config)
-		}
-
-		return stackWriters(writerFactory, "InfluxDB", 3)
+		return stackWriters(func() (writer.CloseWriter, error) {
+			return influxdb.Open(influxdbConfig)
+		}, "InfluxDB", 3)
 	}
 
 	_, ok = os.LookupEnv("AGGREGATOR_TEXT_CONFIGURATION")
@@ -227,9 +238,18 @@ func main() {
 	// Register reflection service on gRPC server.
 	reflection.Register(srv)
 
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		termSig := <-termChan
+		log.Infof("received %s, shutting down", termSig)
+		srv.GracefulStop()
+	}()
+
 	if err := srv.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 
-	log.Infof("exiting")
+	log.Infof("server shutdown")
 }
