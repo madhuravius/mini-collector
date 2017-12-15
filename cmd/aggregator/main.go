@@ -13,6 +13,7 @@ import (
 	"github.com/aptible/mini-collector/emitter/writer"
 	"github.com/aptible/mini-collector/tls"
 	"github.com/aptible/mini-collector/writer/influxdb"
+	"github.com/aptible/mini-collector/writer/datadog"
 	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -119,6 +120,24 @@ func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix s
 }
 
 func getEmitter() (emitter.Emitter, func(), error) {
+	// TODO: Extract this into a function shared by writers
+	datadogConfiguration, ok := os.LookupEnv("AGGREGATOR_DATADOG_CONFIGURATION")
+	if ok {
+		log.Infof("using Datadog writer")
+
+		config := &datadog.Config{}
+		err := json.Unmarshal([]byte(datadogConfiguration), &config)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not decode Datadog configuration: %v", err)
+		}
+
+		writerFactory := func() (writer.CloseWriter, error) {
+			return datadog.Open(config)
+		}
+
+		return stackWriters(writerFactory, "Datadog", 3)
+	}
+
 	influxDbConfiguration, ok := os.LookupEnv("AGGREGATOR_INFLUXDB_CONFIGURATION")
 	if ok {
 		log.Infof("using InfluxDB writer")

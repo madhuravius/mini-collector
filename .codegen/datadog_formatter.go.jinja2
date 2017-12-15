@@ -1,0 +1,32 @@
+// Auto-generated code. DO NOT EDIT.
+package datadog
+
+import (
+	"fmt"
+	"github.com/aptible/mini-collector/batch"
+)
+
+func formatBatch(batch batch.Batch) datadogPayload {
+	series := make([]datadogSeries, 0, len(batch.Entries))
+
+	for _, entry := range batch.Entries {
+		tags := make([]string, 0, len(entry.Tags))
+
+		for k, v := range entry.Tags {
+			tags = append(tags, fmt.Sprintf("%s:%s", k, v))
+		}
+
+		{% for field in item.field if field.name != "unix_time" %}
+		series = append(series, datadogSeries{
+			Metric: "enclave.{{ field.name }}",
+			Points: []datadogPoint{
+				datadogPoint{entry.Time.Unix(), entry.{{to_camel_case(field.name)}}},
+			},
+			Type: "gauge",
+			Tags: tags,
+		})
+		{% endfor %}
+	}
+
+	return datadogPayload{Series: series}
+}

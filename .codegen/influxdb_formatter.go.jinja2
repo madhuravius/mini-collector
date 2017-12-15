@@ -1,0 +1,20 @@
+// Auto-generated code. DO NOT EDIT.
+package influxdb
+
+import (
+	"github.com/aptible/mini-collector/batch"
+)
+
+func entryToFields(entry *batch.Entry) map[string]interface{} {
+	return map[string]interface{}{
+		// NOTE: Older versions of InfluxDB do not support uint64 here.
+
+		{% for field in item.field if field.name != "unix_time" %}
+			{% if field.name == "running" %}
+				"{{field.name}}": (*entry).{{to_camel_case(field.name)}},
+			{% else %}
+				"{{field.name}}": int64((*entry).{{to_camel_case(field.name)}}),
+			{% endif %}
+		{% endfor %}
+	}
+}
