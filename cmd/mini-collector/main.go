@@ -43,6 +43,7 @@ func main() {
 		"environment": environmentName,
 		"service":     serviceName,
 		"container":   containerId,
+		"host":        containerId[0:12],
 	}
 
 	appName, ok := os.LookupEnv("MINI_COLLECTOR_APP_NAME")

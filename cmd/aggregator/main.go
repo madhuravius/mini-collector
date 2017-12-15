@@ -37,6 +37,7 @@ var (
 		"environment",
 		"service",
 		"container",
+		"host",
 	}
 
 	optionalTags = []string{

@@ -10,6 +10,7 @@ type datadogSeries struct {
 	Metric string         `json:"metric"`
 	Points []datadogPoint `json:"points"`
 	Type   string         `json:"type"`
+	Host   string         `json:"host"`
 	Tags   []string       `json:"tags"`
 }
 

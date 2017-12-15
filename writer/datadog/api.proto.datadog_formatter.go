@@ -7,7 +7,13 @@ import (
 )
 
 func formatBatch(batch batch.Batch) datadogPayload {
-	series := make([]datadogSeries, 0, len(batch.Entries))
+	allSeries := make([]datadogSeries, 0, len(batch.Entries))
+
+	var (
+		series datadogSeries
+		host   string
+		ok     bool
+	)
 
 	for _, entry := range batch.Entries {
 		tags := make([]string, 0, len(entry.Tags))
@@ -16,70 +22,119 @@ func formatBatch(batch batch.Batch) datadogPayload {
 			tags = append(tags, fmt.Sprintf("%s:%s", k, v))
 		}
 
-		series = append(series, datadogSeries{
+		series = datadogSeries{
 			Metric: "enclave.running",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.Running},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
 
-		series = append(series, datadogSeries{
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
 			Metric: "enclave.milli_cpu_usage",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.MilliCpuUsage},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
 
-		series = append(series, datadogSeries{
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
 			Metric: "enclave.memory_total_mb",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.MemoryTotalMb},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
 
-		series = append(series, datadogSeries{
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
 			Metric: "enclave.memory_rss_mb",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.MemoryRssMb},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
 
-		series = append(series, datadogSeries{
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
 			Metric: "enclave.memory_limit_mb",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.MemoryLimitMb},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
 
-		series = append(series, datadogSeries{
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
 			Metric: "enclave.disk_usage_mb",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.DiskUsageMb},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
 
-		series = append(series, datadogSeries{
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
 			Metric: "enclave.disk_limit_mb",
 			Points: []datadogPoint{
 				datadogPoint{entry.Time.Unix(), entry.DiskLimitMb},
 			},
 			Type: "gauge",
 			Tags: tags,
-		})
+		}
+
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
 
 	}
 
-	return datadogPayload{Series: series}
+	return datadogPayload{Series: allSeries}
 }
