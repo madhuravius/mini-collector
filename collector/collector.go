@@ -45,6 +45,7 @@ func newCollector(cgroupPath string, dockerName string, mountPath string) *colle
 		&fs.CpuGroup{},
 		&fs.MemoryGroup{},
 		&fs.CpuacctGroup{},
+		&fs.BlkioGroup{},
 	}
 
 	return &collector{
@@ -74,38 +75,37 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 		}
 	}
 
-	accumulatedCpuUsage := c.statsBuffer.CpuStats.CpuUsage.TotalUsage
+	ioStats := computeIoStats(&c.statsBuffer)
 
-	var milliCpuUsage uint64
-	if accumulatedCpuUsage > lastState.AccumulatedCpuUsage {
-		elapsedCpu := accumulatedCpuUsage - lastState.AccumulatedCpuUsage
-		elapsedTime := pollTime.Sub(lastState.Time).Nanoseconds()
-		if elapsedTime > 0 {
-			milliCpuUsage = uint64(1000 * float64(elapsedCpu) / float64(elapsedTime))
-		} else {
-			milliCpuUsage = 0
-		}
-	} else {
-		milliCpuUsage = 0
+	thisState := State{
+		Time:                pollTime,
+		AccumulatedCpuUsage: c.statsBuffer.CpuStats.CpuUsage.TotalUsage,
+		IoStats:             ioStats,
 	}
+
+	milliCpuUsage := computeMilliCpuUsage(thisState, lastState)
+
+	readKbps := computeReadKbps(thisState, lastState)
+	writeKbps := computeWriteKbps(thisState, lastState)
+	readIops := computeReadIops(thisState, lastState)
+	writeIops := computeWriteIops(thisState, lastState)
 
 	baseRssMemory := c.statsBuffer.MemoryStats.Stats["rss"]
 	mappedFileMemory := c.statsBuffer.MemoryStats.Stats["mapped_file"]
 	virtualMemory := c.statsBuffer.MemoryStats.Usage.Usage
 	limitMemory := c.statsBuffer.MemoryStats.Usage.Limit
 
-	state := State{
-		Time:                pollTime,
-		AccumulatedCpuUsage: accumulatedCpuUsage,
-	}
-
 	return CgroupPoint{
 		MilliCpuUsage: milliCpuUsage,
 		MemoryTotalMb: virtualMemory / MbInBytes,
 		MemoryRssMb:   (baseRssMemory + mappedFileMemory) / MbInBytes,
 		MemoryLimitMb: (limitMemory) / MbInBytes,
+		DiskReadKbps:  readKbps,
+		DiskWriteKbps: writeKbps,
+		DiskReadIops:  readIops,
+		DiskWriteIops: writeIops,
 		Running:       true,
-	}, state, nil
+	}, thisState, nil
 
 }
 

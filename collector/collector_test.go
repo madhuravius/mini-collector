@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	testContainerId = "8efeed328b0f040b23298b3ea827b17e7cb76ae0f89b0f7600c6b43d03ccb267"
+	testContainerId = "cg"
 	testMountPath   = "/"
 )
 
@@ -70,6 +70,43 @@ func TestGetCgroupPointReturnsAccumulatedCpuUsage(t *testing.T) {
 		assert.Equal(t, t1, thisState.Time)
 		assert.Equal(t, uint64(20042190861), thisState.AccumulatedCpuUsage)
 		assert.Equal(t, uint64(502), point.MilliCpuUsage)
+	}
+}
+
+func TestGetCgroupPointReturnsAccumulatedIoStats(t *testing.T) {
+	c := newCollector(getTestDataCgroupPath(), testContainerId, testMountPath)
+	c.clock = &stubClock{time: t1}
+
+	lastState := State{
+		Time: t0,
+		IoStats: IoStats{
+			ReadBytes:  16097280,
+			WriteBytes: 24694784,
+			ReadOps:    81,
+			WriteOps:   20,
+		},
+	}
+
+	point, thisState, err := c.getCgroupPoint(lastState)
+
+	if assert.Nil(t, err) {
+		assert.Equal(t, t1, thisState.Time)
+
+		// 16097280 bytes in 20 seconds = 786 kbps
+		assert.Equal(t, uint64(32194560), thisState.IoStats.ReadBytes)
+		assert.Equal(t, uint64(786), point.DiskReadKbps)
+
+		// 24694784 bytes in 20 seconds = 1205 kbps
+		assert.Equal(t, uint64(49389568), thisState.IoStats.WriteBytes)
+		assert.Equal(t, uint64(1205), point.DiskWriteKbps)
+
+		// 600 ops in 20 seconds = 30 iops
+		assert.Equal(t, uint64(681), thisState.IoStats.ReadOps)
+		assert.Equal(t, uint64(30), point.DiskReadIops)
+
+		// 60 ops in 20 seconds = 3 iops
+		assert.Equal(t, uint64(80), thisState.IoStats.WriteOps)
+		assert.Equal(t, uint64(3), point.DiskWriteIops)
 	}
 }
 

@@ -22,5 +22,13 @@ func entryToFields(entry *batch.Entry) map[string]interface{} {
 		"disk_usage_mb": int64((*entry).DiskUsageMb),
 
 		"disk_limit_mb": int64((*entry).DiskLimitMb),
+
+		"disk_read_kbps": int64((*entry).DiskReadKbps),
+
+		"disk_write_kbps": int64((*entry).DiskWriteKbps),
+
+		"disk_read_iops": int64((*entry).DiskReadIops),
+
+		"disk_write_iops": int64((*entry).DiskWriteIops),
 	}
 }

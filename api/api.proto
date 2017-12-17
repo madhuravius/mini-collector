@@ -4,6 +4,7 @@ service Aggregator {
 	rpc Publish (PublishRequest) returns (PublishResponse) {}
 }
 
+// TODO: use smaller ints that are a better fit
 message PublishRequest {
 	int64 unix_time = 1;
 	bool running = 2;
@@ -13,6 +14,10 @@ message PublishRequest {
 	uint64 memory_limit_mb = 6;
 	uint64 disk_usage_mb = 7;
 	uint64 disk_limit_mb = 8;
+	uint64 disk_read_kbps = 9;
+	uint64 disk_write_kbps = 10;
+	uint64 disk_read_iops = 11;
+	uint64 disk_write_iops = 12;
 }
 
 message PublishResponse {

@@ -158,16 +158,7 @@ PublishLoop:
 }
 
 func (p *publisher) Queue(ctx context.Context, ts time.Time, point collector.Point) error {
-	payload := api.PublishRequest{
-		UnixTime:      ts.Unix(),
-		MilliCpuUsage: point.MilliCpuUsage,
-		MemoryTotalMb: point.MemoryTotalMb,
-		MemoryRssMb:   point.MemoryRssMb,
-		MemoryLimitMb: point.MemoryLimitMb,
-		DiskUsageMb:   point.DiskUsageMb,
-		DiskLimitMb:   point.DiskLimitMb,
-		Running:       point.Running,
-	}
+	payload := buildPublishRequest(ts, point)
 
 	select {
 	case p.publishChannel <- &payload:

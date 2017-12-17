@@ -134,6 +134,70 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 		allSeries = append(allSeries, series)
 
+		series = datadogSeries{
+			Metric: "enclave.disk_read_kbps",
+			Points: []datadogPoint{
+				datadogPoint{entry.Time.Unix(), entry.DiskReadKbps},
+			},
+			Type: "gauge",
+			Tags: tags,
+		}
+
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
+			Metric: "enclave.disk_write_kbps",
+			Points: []datadogPoint{
+				datadogPoint{entry.Time.Unix(), entry.DiskWriteKbps},
+			},
+			Type: "gauge",
+			Tags: tags,
+		}
+
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
+			Metric: "enclave.disk_read_iops",
+			Points: []datadogPoint{
+				datadogPoint{entry.Time.Unix(), entry.DiskReadIops},
+			},
+			Type: "gauge",
+			Tags: tags,
+		}
+
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
+		series = datadogSeries{
+			Metric: "enclave.disk_write_iops",
+			Points: []datadogPoint{
+				datadogPoint{entry.Time.Unix(), entry.DiskWriteIops},
+			},
+			Type: "gauge",
+			Tags: tags,
+		}
+
+		host, ok = entry.Tags["host"]
+		if ok {
+			series.Host = host
+		}
+
+		allSeries = append(allSeries, series)
+
 	}
 
 	return datadogPayload{Series: allSeries}

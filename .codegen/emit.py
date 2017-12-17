@@ -29,14 +29,21 @@ def generate_code(request, response):
 
             LOGGER.info("visit %s", item.name)
 
-            for writer in ["datadog", "influxdb"]:
+            for package, name in [
+                ["writer/datadog", "datadog"],
+                ["writer/influxdb", "influxdb"],
+                ["publisher", "publisher"],
+            ]:
                 src = os.path.join(
                     os.path.dirname(__file__),
-                    "{0}_formatter.go.jinja2".format(writer)
+                    "{0}_formatter.go.jinja2".format(name)
                 )
 
                 f = response.file.add()
-                f.name = "{0}/{1}.{2}_formatter.go".format(writer, proto_file.name, writer)
+                f.name = os.path.join(
+                    package,
+                    "{0}.{1}_formatter.go".format(proto_file.name, name)
+                )
 
                 with open(src) as fh:
                     f.content = Template(fh.read()).render(
