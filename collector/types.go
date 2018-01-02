@@ -20,8 +20,8 @@ type CgroupPoint struct {
 }
 
 type DiskPoint struct {
-	DiskUsageMb uint64
-	DiskLimitMb uint64
+	DiskUsageMb int64
+	DiskLimitMb int64
 }
 
 type Point struct {

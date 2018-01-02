@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+var (
+	noDiskPoint = DiskPoint{
+		DiskUsageMb: -1,
+		DiskLimitMb: -1,
+	}
+)
+
 type subsystem interface {
 	Name() string
 	GetStats(path string, stats *cgroups.Stats) error
@@ -110,8 +117,10 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 }
 
 func (c *collector) getDiskPoint() (DiskPoint, error) {
+	// When no disk is to be scanned, we return negative values for the
+	// disk point.
 	if c.mountPath == "" {
-		return DiskPoint{}, nil
+		return noDiskPoint, nil
 	}
 
 	err := syscall.Statfs(c.mountPath, &c.fsBuffer)
@@ -125,8 +134,8 @@ func (c *collector) getDiskPoint() (DiskPoint, error) {
 	diskLimitBytes := c.fsBuffer.Blocks * blockSize
 
 	return DiskPoint{
-		DiskUsageMb: diskUsageBytes / MbInBytes,
-		DiskLimitMb: diskLimitBytes / MbInBytes,
+		DiskUsageMb: int64(diskUsageBytes / MbInBytes),
+		DiskLimitMb: int64(diskLimitBytes / MbInBytes),
 	}, nil
 }
 

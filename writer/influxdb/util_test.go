@@ -15,20 +15,30 @@ func TestEntryToFieldsIsValid(t *testing.T) {
 			MemoryTotalMb: 100,
 			MemoryRssMb:   50,
 			MemoryLimitMb: 200,
-			DiskUsageMb:   1000,
-			DiskLimitMb:   2000,
+			DiskUsageMb:   -1,
+			DiskLimitMb:   -1,
+			DiskReadIops:  0,
 			Running:       true,
 		},
 	}
 
 	field := entryToFields(&entry)
+
 	assert.Equal(t, int64(123), field["milli_cpu_usage"])
 	assert.Equal(t, int64(100), field["memory_total_mb"])
 	assert.Equal(t, int64(50), field["memory_rss_mb"])
 	assert.Equal(t, int64(200), field["memory_limit_mb"])
-	assert.Equal(t, int64(1000), field["disk_usage_mb"])
-	assert.Equal(t, int64(2000), field["disk_limit_mb"])
+	assert.Equal(t, int64(0), field["disk_read_iops"])
+
 	assert.Equal(t, true, field["running"])
+
+	var ok bool
+
+	_, ok = field["disk_usage_mb"]
+	assert.False(t, ok)
+
+	_, ok = field["disk_limit_mb"]
+	assert.False(t, ok)
 }
 
 func TestBuildBatchPointsIsValid(t *testing.T) {

@@ -181,11 +181,20 @@ func TestGetCgroupPointReturnsErrorForOtherError(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetDiskPointReturnsData(t *testing.T) {
+func TestGetDiskPointReturnsDataForDisk(t *testing.T) {
 	c := newCollector(getTestDataCgroupPath(), testContainerId, testMountPath)
 	point, err := c.getDiskPoint()
 	if assert.Nil(t, err) {
 		assert.True(t, point.DiskLimitMb > point.DiskUsageMb)
+	}
+}
+
+func TestGetDiskPointReturnsNoDataForNoDisk(t *testing.T) {
+	c := newCollector(getTestDataCgroupPath(), testContainerId, "")
+	point, err := c.getDiskPoint()
+	if assert.Nil(t, err) {
+		assert.True(t, point.DiskLimitMb < 0)
+		assert.True(t, point.DiskUsageMb < 0)
 	}
 }
 

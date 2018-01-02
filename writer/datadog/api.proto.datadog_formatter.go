@@ -22,181 +22,232 @@ func formatBatch(batch batch.Batch) datadogPayload {
 			tags = append(tags, fmt.Sprintf("%s:%s", k, v))
 		}
 
-		series = datadogSeries{
-			Metric: "enclave.running",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.Running},
-			},
-			Type: "gauge",
-			Tags: tags,
+		ts := entry.Time.Unix()
+
+		var val int64
+
+		val = 0
+		if entry.Running {
+			val = 1
 		}
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.running",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		allSeries = append(allSeries, series)
+		val = int64(entry.MilliCpuUsage)
 
-		series = datadogSeries{
-			Metric: "enclave.milli_cpu_usage",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.MilliCpuUsage},
-			},
-			Type: "gauge",
-			Tags: tags,
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.milli_cpu_usage",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
+		val = int64(entry.MemoryTotalMb)
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.memory_total_mb",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		allSeries = append(allSeries, series)
+		val = int64(entry.MemoryRssMb)
 
-		series = datadogSeries{
-			Metric: "enclave.memory_total_mb",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.MemoryTotalMb},
-			},
-			Type: "gauge",
-			Tags: tags,
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.memory_rss_mb",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
+		val = int64(entry.MemoryLimitMb)
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.memory_limit_mb",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		allSeries = append(allSeries, series)
+		val = int64(entry.DiskUsageMb)
 
-		series = datadogSeries{
-			Metric: "enclave.memory_rss_mb",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.MemoryRssMb},
-			},
-			Type: "gauge",
-			Tags: tags,
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.disk_usage_mb",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
+		val = int64(entry.DiskLimitMb)
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.disk_limit_mb",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		allSeries = append(allSeries, series)
+		val = int64(entry.DiskReadKbps)
 
-		series = datadogSeries{
-			Metric: "enclave.memory_limit_mb",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.MemoryLimitMb},
-			},
-			Type: "gauge",
-			Tags: tags,
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.disk_read_kbps",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
+		val = int64(entry.DiskWriteKbps)
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.disk_write_kbps",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		allSeries = append(allSeries, series)
+		val = int64(entry.DiskReadIops)
 
-		series = datadogSeries{
-			Metric: "enclave.disk_usage_mb",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.DiskUsageMb},
-			},
-			Type: "gauge",
-			Tags: tags,
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.disk_read_iops",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
+		val = int64(entry.DiskWriteIops)
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.disk_write_iops",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
 		}
-
-		allSeries = append(allSeries, series)
-
-		series = datadogSeries{
-			Metric: "enclave.disk_limit_mb",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.DiskLimitMb},
-			},
-			Type: "gauge",
-			Tags: tags,
-		}
-
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
-		}
-
-		allSeries = append(allSeries, series)
-
-		series = datadogSeries{
-			Metric: "enclave.disk_read_kbps",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.DiskReadKbps},
-			},
-			Type: "gauge",
-			Tags: tags,
-		}
-
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
-		}
-
-		allSeries = append(allSeries, series)
-
-		series = datadogSeries{
-			Metric: "enclave.disk_write_kbps",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.DiskWriteKbps},
-			},
-			Type: "gauge",
-			Tags: tags,
-		}
-
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
-		}
-
-		allSeries = append(allSeries, series)
-
-		series = datadogSeries{
-			Metric: "enclave.disk_read_iops",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.DiskReadIops},
-			},
-			Type: "gauge",
-			Tags: tags,
-		}
-
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
-		}
-
-		allSeries = append(allSeries, series)
-
-		series = datadogSeries{
-			Metric: "enclave.disk_write_iops",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.DiskWriteIops},
-			},
-			Type: "gauge",
-			Tags: tags,
-		}
-
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
-		}
-
-		allSeries = append(allSeries, series)
 
 	}
 

@@ -22,23 +22,39 @@ func formatBatch(batch batch.Batch) datadogPayload {
 			tags = append(tags, fmt.Sprintf("%s:%s", k, v))
 		}
 
-		{% for field in item.field if field.name != "unix_time" %}
-		series = datadogSeries{
-			Metric: "enclave.{{ field.name }}",
-			Points: []datadogPoint{
-				datadogPoint{entry.Time.Unix(), entry.{{to_camel_case(field.name)}}},
-			},
-			Type: "gauge",
-			Tags: tags,
-		}
+		ts := entry.Time.Unix()
 
-		host, ok = entry.Tags["host"]
-		if ok {
-			series.Host = host
-		}
+		var val int64
 
-		allSeries = append(allSeries, series)
+		{% for field in item.field if field.name not in ["unix_time"] %}
+		{% if field.name == "running" %}
+			val = 0
+			if entry.Running {
+				val = 1
+			}
+		{% else %}
+			val = int64(entry.{{to_camel_case(field.name)}})
+		{% endif %}
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.{{ field.name }}",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
+		}
 		{% endfor %}
+
 	}
 
 	return datadogPayload{Series: allSeries}
