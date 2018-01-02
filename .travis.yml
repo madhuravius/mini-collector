@@ -7,6 +7,18 @@ jobs:
       language: go
       go: "1.9"
       before_install:
+        - export PYENV_VERSION=3.6
+        - pip3 install --user -r .codegen/requirements.txt
+        - mkdir -p /tmp/protoc
+        - pushd /tmp/protoc
+        - PROTOC_VERSION="3.5.1"
+        - PROTOC_ARCHIVE="protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+        - curl -fsSLO "https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ARCHIVE}"
+        - unzip "$PROTOC_ARCHIVE"
+        - rm "$PROTOC_ARCHIVE"
+        - export PATH="/tmp/protoc/bin:$PATH"
+        - popd
+        - go get -u github.com/golang/protobuf/protoc-gen-go
         - mkdir -p "${HOME}/gopath/src/github.com/aptible/mini-collector"
         - rsync -az "${TRAVIS_BUILD_DIR}/" "${HOME}/gopath/src/github.com/aptible/mini-collector/"
         - export "TRAVIS_BUILD_DIR=${HOME}/gopath/src/github.com/aptible/mini-collector"
@@ -15,7 +27,7 @@ jobs:
       install:
         - make deps
       script:
-        - make fmt
+        - make --always-make src
         - git diff --exit-code
         - make test
 
