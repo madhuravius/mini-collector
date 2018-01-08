@@ -119,8 +119,12 @@ func (e *writerEmitter) sendOrDelegateToNextEmitter(ctx context.Context, batch b
 			batch.Fields(),
 		).Warnf("sendBatch failed: %v", err)
 
-		// TODO: Log an error here
-		e.nextEmitter.Emit(ctx, batch)
+		err = e.nextEmitter.Emit(ctx, batch)
+		if err != nil {
+			e.logger.WithFields(
+				batch.Fields(),
+			).Errorf("nextEmitter.Emit failed: %v", err)
+		}
 	}
 }
 

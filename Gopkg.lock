@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/PagerDuty/go-pagerduty"
+  packages = ["."]
+  revision = "078a3284fb0ee5256d2164b53b9ed44ff3b3b05e"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -18,6 +24,12 @@
   name = "github.com/golang/protobuf"
   packages = ["jsonpb","proto","protoc-gen-go/descriptor","ptypes","ptypes/any","ptypes/duration","ptypes/struct","ptypes/timestamp"]
   revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  revision = "53e6ce116135b80d037921a7fdd5138cf32d7a8a"
 
 [[projects]]
   branch = "master"
@@ -94,6 +106,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ad6d0d4c8b2da69cca3bd8b1ccaa6dd6cc3afbb805963ad8a852e522b029d7cc"
+  inputs-digest = "1b4ae72af63cc2eb47748be186324571fc45ca1871fb0fa153ec0437ce082004"
   solver-name = "gps-cdcl"
   solver-version = 1

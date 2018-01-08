@@ -10,6 +10,7 @@ import (
 	"github.com/aptible/mini-collector/emitter"
 	"github.com/aptible/mini-collector/emitter/blackhole"
 	"github.com/aptible/mini-collector/emitter/hold"
+	"github.com/aptible/mini-collector/emitter/notify"
 	"github.com/aptible/mini-collector/emitter/text"
 	"github.com/aptible/mini-collector/emitter/writer"
 	"github.com/aptible/mini-collector/tls"
@@ -94,6 +95,20 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 	return &api.PublishResponse{}, nil
 }
 
+func makeFinalEmitter() (emitter.Emitter, error) {
+	notifyConfig := &notify.Config{}
+	ok, err := tryLoadConfiguration("AGGREGATOR_NOTIFY_CONFIGURATION", notifyConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode notify configuration: %v", err)
+	}
+
+	if ok {
+		return notify.Open(notifyConfig), nil
+	}
+
+	return blackhole.Open(), nil
+}
+
 func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix string, count int) (emitter.Emitter, func(), error) {
 	name := fmt.Sprintf("%s %d", namePrefix, count)
 
@@ -103,10 +118,18 @@ func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix s
 	}
 
 	if count <= 1 {
-		em := writer.Open(name, w, blackhole.Open())
+		finalEmitter, err := makeFinalEmitter()
+		if err != nil {
+			w.Close()
+			return nil, nil, fmt.Errorf("makeFinalEmitter failed: %v", err)
+		}
+
+		em := writer.Open(name, w, finalEmitter)
+
 		return em, func() {
 			em.Close()
 			w.Close()
+			finalEmitter.Close()
 		}, nil
 	}
 
