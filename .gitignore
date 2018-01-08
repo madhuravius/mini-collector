@@ -1,0 +1,5 @@
+/.docker/config.json
+/.docker/*/Dockerfile
+/vendor
+/mini-collector
+/aggregator
