@@ -16,6 +16,9 @@ type CgroupPoint struct {
 	DiskReadIops  uint64
 	DiskWriteIops uint64
 
+	PidsCurrent uint64
+	PidsLimit   uint64
+
 	Running bool
 }
 

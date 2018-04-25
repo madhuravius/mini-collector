@@ -31,5 +31,9 @@ func buildPublishRequest(ts time.Time, point collector.Point) api.PublishRequest
 		DiskReadIops: point.DiskReadIops,
 
 		DiskWriteIops: point.DiskWriteIops,
+
+		PidsCurrent: point.PidsCurrent,
+
+		PidsLimit: point.PidsLimit,
 	}
 }

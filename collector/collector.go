@@ -21,13 +21,18 @@ type subsystem interface {
 	GetStats(path string, stats *cgroups.Stats) error
 }
 
+type wrappedSubsystem struct {
+	subsystem subsystem
+	optional  bool
+}
+
 type collector struct {
 	cgroupPath  string
 	mountPath   string
 	dockerName  string
 	statsBuffer cgroups.Stats
 	fsBuffer    syscall.Statfs_t
-	subsystems  []subsystem
+	subsystems  []wrappedSubsystem
 	clock       clock
 }
 
@@ -48,11 +53,27 @@ func NewCollector(cgroupPath string, dockerName string, mountPath string) Collec
 func newCollector(cgroupPath string, dockerName string, mountPath string) *collector {
 	statsBuffer := *cgroups.NewStats()
 
-	subsystems := []subsystem{
-		&fs.CpuGroup{},
-		&fs.MemoryGroup{},
-		&fs.CpuacctGroup{},
-		&fs.BlkioGroup{},
+	subsystems := []wrappedSubsystem{
+		wrappedSubsystem{
+			subsystem: &fs.CpuGroup{},
+			optional:  false,
+		},
+		wrappedSubsystem{
+			subsystem: &fs.MemoryGroup{},
+			optional:  false,
+		},
+		wrappedSubsystem{
+			subsystem: &fs.CpuacctGroup{},
+			optional:  false,
+		},
+		wrappedSubsystem{
+			subsystem: &fs.BlkioGroup{},
+			optional:  false,
+		},
+		wrappedSubsystem{
+			subsystem: &fs.PidsGroup{},
+			optional:  true,
+		},
 	}
 
 	return &collector{
@@ -69,16 +90,21 @@ func newCollector(cgroupPath string, dockerName string, mountPath string) *colle
 func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) {
 	pollTime := c.clock.Now()
 
-	for _, subsys := range c.subsystems {
-		cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, subsys.Name(), c.dockerName)
+	for _, wrapper := range c.subsystems {
+		cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, wrapper.subsystem.Name(), c.dockerName)
 
-		err := subsys.GetStats(cgPath, &c.statsBuffer)
+		err := wrapper.subsystem.GetStats(cgPath, &c.statsBuffer)
 
 		if err != nil {
+			if wrapper.optional {
+				continue
+			}
+
 			if os.IsNotExist(err) {
 				return CgroupPoint{Running: false}, MakeNoContainerState(pollTime), nil
 			}
-			return CgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", subsys.Name(), err)
+
+			return CgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", wrapper.subsystem.Name(), err)
 		}
 	}
 
@@ -111,6 +137,8 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 		DiskWriteKbps: writeKbps,
 		DiskReadIops:  readIops,
 		DiskWriteIops: writeIops,
+		PidsCurrent:   c.statsBuffer.PidsStats.Current,
+		PidsLimit:     c.statsBuffer.PidsStats.Limit,
 		Running:       true,
 	}, thisState, nil
 

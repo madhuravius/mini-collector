@@ -65,5 +65,15 @@ func entryToFields(entry *batch.Entry) map[string]interface{} {
 		out["disk_write_iops"] = val
 	}
 
+	val = int64((*entry).PidsCurrent)
+	if val >= 0 {
+		out["pids_current"] = val
+	}
+
+	val = int64((*entry).PidsLimit)
+	if val >= 0 {
+		out["pids_limit"] = val
+	}
+
 	return out
 }
