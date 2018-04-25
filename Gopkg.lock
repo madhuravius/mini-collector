@@ -34,8 +34,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
-  packages = [".","logging","logging/logrus","tags","tags/logrus"]
-  revision = "93790b4a90fab4022bb148faf5e3f3580d817d50"
+  packages = [".","logging","logging/logrus","logging/logrus/ctxlogrus","tags","tags/logrus"]
+  revision = "bc175326149c6c87ca6e2b9fe58cf6d2aa1036cd"
 
 [[projects]]
   name = "github.com/influxdata/influxdb"
@@ -46,8 +46,14 @@
 [[projects]]
   name = "github.com/opencontainers/runc"
   packages = ["libcontainer/cgroups","libcontainer/cgroups/fs","libcontainer/configs","libcontainer/system","libcontainer/utils"]
-  revision = "1a124e9c2da68c867ed2c4f4ff19f0cd95cda0cd"
-  version = "v0.0.8"
+  revision = "4fc53a81fb7c994640722ac585fa9ca548971871"
+  version = "v1.0.0-rc5"
+
+[[projects]]
+  name = "github.com/opencontainers/runtime-spec"
+  packages = ["specs-go"]
+  revision = "4e3b9264a330d094b0386c3703c5f379119711e8"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -106,6 +112,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1b4ae72af63cc2eb47748be186324571fc45ca1871fb0fa153ec0437ce082004"
+  inputs-digest = "2f25b22174917a0612d58a631744a944d8cacab81107e32d942ec4dbdbd7d417"
   solver-name = "gps-cdcl"
   solver-version = 1
