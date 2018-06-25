@@ -3,3 +3,5 @@
 /vendor
 /mini-collector
 /aggregator
+/_tools
+/.cover
