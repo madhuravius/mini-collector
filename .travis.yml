@@ -18,7 +18,8 @@ jobs:
         - rm "$PROTOC_ARCHIVE"
         - export PATH="/tmp/protoc/bin:$PATH"
         - popd
-        - go get -u github.com/golang/protobuf/protoc-gen-go
+        - go get -u github.com/twitchtv/retool
+        - retool sync
         - mkdir -p "${HOME}/gopath/src/github.com/aptible/mini-collector"
         - rsync -az "${TRAVIS_BUILD_DIR}/" "${HOME}/gopath/src/github.com/aptible/mini-collector/"
         - export "TRAVIS_BUILD_DIR=${HOME}/gopath/src/github.com/aptible/mini-collector"
