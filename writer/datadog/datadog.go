@@ -14,11 +14,11 @@ import (
 
 const (
 	datadogSeriesUrl = "https://app.datadoghq.com/api/v1/series"
-	timeout          = 30 * time.Second
 )
 
 type datadogWriter struct {
-	apiKey string
+	apiKey  string
+	timeout time.Duration
 }
 
 func Open(config *Config) (writer.CloseWriter, error) {
@@ -26,8 +26,14 @@ func Open(config *Config) (writer.CloseWriter, error) {
 		return nil, fmt.Errorf("apiKey is required")
 	}
 
+	timeout, err := time.ParseDuration(config.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("invalid timeout (%s): %v", config.Timeout, err)
+	}
+
 	return &datadogWriter{
-		apiKey: config.ApiKey,
+		apiKey:  config.ApiKey,
+		timeout: timeout,
 	}, nil
 }
 
@@ -46,7 +52,7 @@ func (em *datadogWriter) Write(batch batch.Batch) error {
 		return fmt.Errorf("NewRequest failed: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), em.timeout)
 	defer cancel()
 
 	req = req.WithContext(ctx)
