@@ -25,6 +25,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -176,10 +177,24 @@ func getEmitter() (emitter.Emitter, func(), error) {
 		return nil, nil, fmt.Errorf("could not decode Datadog configuration: %v", err)
 	}
 	if ok {
-		logger.Infof("using Datadog writer")
+		if datadogConfig.Timeout == "" {
+			datadogConfig.Timeout = "30s"
+		}
+		// We're not going to use it here, but parse this just to be sure we won't hit errors later.
+		// It's better for us to fail now when the aggregator is just starting up.
+		_, err := time.ParseDuration(datadogConfig.Timeout)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid timeout (%s): %v", datadogConfig.Timeout, err)
+		}
+
+		retryCount, err := strconv.Atoi(datadogConfig.RetryCount)
+		if err != nil {
+			retryCount = 3
+		}
+		logger.Infof("using Datadog writer with retry count %v, timeout %v", retryCount, datadogConfig.Timeout)
 		return stackWriters(func() (writer.CloseWriter, error) {
 			return datadog.Open(datadogConfig)
-		}, "Datadog", 3)
+		}, "Datadog", retryCount)
 	}
 
 	influxdbConfig := &influxdb.Config{}

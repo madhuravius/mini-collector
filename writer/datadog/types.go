@@ -1,7 +1,9 @@
 package datadog
 
 type Config struct {
-	ApiKey string `json:"api_key"`
+	ApiKey     string `json:"api_key"`
+	Timeout    string `json:"timeout"`
+	RetryCount string `json:"retry_count"`
 }
 
 type datadogPoint = []interface{}
