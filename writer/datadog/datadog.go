@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	datadogSeriesUrl = "https://app.datadoghq.com/api/v1/series"
+	defaultSeriesUrl = "https://app.datadoghq.com/api/v1/series"
 )
 
 type datadogWriter struct {
-	apiKey  string
-	timeout time.Duration
+	seriesUrl string
+	apiKey    string
+	timeout   time.Duration
 }
 
 func Open(config *Config) (writer.CloseWriter, error) {
@@ -31,9 +32,15 @@ func Open(config *Config) (writer.CloseWriter, error) {
 		return nil, fmt.Errorf("invalid timeout (%s): %v", config.Timeout, err)
 	}
 
+	seriesUrl := config.SeriesUrl
+	if seriesUrl == "" {
+		seriesUrl = defaultSeriesUrl
+	}
+
 	return &datadogWriter{
-		apiKey:  config.ApiKey,
-		timeout: timeout,
+		seriesUrl: seriesUrl,
+		apiKey:    config.ApiKey,
+		timeout:   timeout,
 	}, nil
 }
 
@@ -45,7 +52,7 @@ func (em *datadogWriter) Write(batch batch.Batch) error {
 		return err
 	}
 
-	url := fmt.Sprintf("%s?api_key=%s", datadogSeriesUrl, em.apiKey)
+	url := fmt.Sprintf("%s?api_key=%s", em.seriesUrl, em.apiKey)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
