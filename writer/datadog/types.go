@@ -4,6 +4,7 @@ type Config struct {
 	ApiKey     string `json:"api_key"`
 	Timeout    string `json:"timeout"`
 	RetryCount string `json:"retry_count"`
+	SeriesUrl  string `json:"series_url"`
 }
 
 type datadogPoint = []interface{}
