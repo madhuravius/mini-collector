@@ -3,7 +3,6 @@ SHELL=/bin/bash
 
 .PHONY: deps
 deps:
-	cat tools/tools.go | grep _ | awk -F'"' '{print $2}' | xargs -tI % go install %
 	go mod download
 
 .PHONY: build
@@ -17,11 +16,11 @@ api/api.proto .codegen/emit.py \
 .codegen/influxdb_formatter.go.jinja2 \
 .codegen/datadog_formatter.go.jinja2 \
 .codegen/publisher_formatter.go.jinja2
-	retool do protoc -I api api/api.proto --plugin=protoc-gen-custom=./.codegen/emit.py --custom_out=.
+	protoc -I api api/api.proto --plugin=protoc-gen-custom=./.codegen/emit.py --custom_out=.
 	find . -name "api.proto.*_formatter.go" | xargs gofmt -l -w
 
 api/api.pb.go: api/api.proto
-	retool do protoc -I api/ api/api.proto --go_out=plugins=grpc:api
+	protoc -I api/ api/api.proto --go_out=plugins=grpc:api
 
 .PHONY: gofiles
 src: $(GOFILES_NOVENDOR) fmt
