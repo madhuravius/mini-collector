@@ -5,3 +5,5 @@
 /aggregator
 /_tools
 /.cover
+main
+.go-version

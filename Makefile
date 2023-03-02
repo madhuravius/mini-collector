@@ -3,11 +3,11 @@ SHELL=/bin/bash
 
 .PHONY: deps
 deps:
-	dep ensure
+	go mod download
 
 .PHONY: build
 build: $(GOFILES_NOVENDOR)
-	go list ./...  | grep cmd | xargs -P $$(nproc) -n 1 -- go build -i
+	go list ./...  | grep cmd | xargs -P $$(nproc) -n 1 -- go build
 
 writer/influxdb/api.proto.influxdb_formatter.go \
 writer/datadog/api.proto.datadog_formatter.go \
