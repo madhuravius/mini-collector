@@ -22,7 +22,7 @@ api/api.proto .codegen/emit.py \
 	find . -name "api.proto.*_formatter.go" | xargs gofmt -l -w
 
 api/api.pb.go: api/api.proto
-	protoc -I api/ api/api.proto --go-grpc_out=api
+	protoc -I api/ api/api.proto --go_out=plugins=grpc:api
 
 .PHONY: gofiles
 src: $(GOFILES_NOVENDOR) fmt
