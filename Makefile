@@ -3,6 +3,7 @@ SHELL=/bin/bash
 
 .PHONY: deps
 deps:
+	cat tools/tools.go | grep _ | awk -F'"' '{print $2}' | xargs -tI % go install %
 	go mod download
 
 .PHONY: build
