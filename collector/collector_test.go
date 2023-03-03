@@ -22,6 +22,10 @@ var (
 	t1 = time.Date(2017, 1, 1, 0, 0, 20, 0, time.UTC) // 20 seconds later
 )
 
+func init() {
+	cgroups.TestMode = true
+}
+
 func getTestDataCgroupPath() string {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {

@@ -7,3 +7,5 @@
 /.cover
 main
 .go-version
+.python-version
+venv/
