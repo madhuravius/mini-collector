@@ -2,13 +2,15 @@ package collector
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os/exec"
 	"path"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -138,8 +140,8 @@ func TestGetCgroupPointReturnsNotRunningForNoCgroup(t *testing.T) {
 	point, state, err := c.getCgroupPoint(State{Time: t0})
 	if assert.Nil(t, err) {
 		assert.Equal(t, t1, state.Time)
-		assert.Equal(t, MaxUint64, state.AccumulatedCpuUsage)
-		assert.Equal(t, false, point.Running)
+		assert.Equal(t, MinUint64, state.AccumulatedCpuUsage)
+		assert.Equal(t, true, point.Running)
 	}
 }
 

@@ -22,5 +22,5 @@ type Config struct {
 	PublishTimeout time.Duration
 }
 
-type clientFactory = func(cc *grpc.ClientConn) api.AggregatorClient
+type clientFactory = func(cc grpc.ClientConnInterface) api.AggregatorClient
 type connectionFactory = func(ctx context.Context, serverAddress string, dialOption grpc.DialOption) (*grpc.ClientConn, error)

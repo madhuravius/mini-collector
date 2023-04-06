@@ -22,7 +22,9 @@ api/api.proto .codegen/emit.py \
 	find . -name "api.proto.*_formatter.go" | xargs gofmt -l -w
 
 api/api.pb.go: api/api.proto
-	protoc -I api/ api/api.proto --go_out=api
+	protoc -I api/ api/api.proto \
+		--go-grpc_out=api \
+		--go_out=api
 
 .PHONY: gofiles
 src: $(GOFILES_NOVENDOR) fmt
@@ -30,8 +32,8 @@ src: $(GOFILES_NOVENDOR) fmt
 
 .PHONY: unit
 unit: $(GOFILES_NOVENDOR)
-	go test $$(go list ./... | grep -v /vendor/)
-	go vet $$(go list ./... | grep -v /vendor/)
+	go test $$(go list ./...)
+	go vet $$(go list ./...)
 
 .PHONY: test
 test: unit

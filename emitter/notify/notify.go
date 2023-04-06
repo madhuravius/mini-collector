@@ -1,8 +1,6 @@
 /*
-
 This is a fake emitter that notifies PagerDuty when events cannot be delivered
 to other emitters. It's meant to be stacked on top of other Emitters.
-
 */
 package notify
 

@@ -9,3 +9,5 @@ main
 .go-version
 .python-version
 venv/
+go
+go*.tar.gz

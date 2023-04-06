@@ -53,6 +53,7 @@ var (
 )
 
 type server struct {
+	api.UnimplementedAggregatorServer
 	batcher batcher.Batcher
 }
 
