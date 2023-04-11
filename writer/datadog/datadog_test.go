@@ -21,14 +21,14 @@ func mapFromPayload(p datadogPayload) map[string]int64 {
 
 func TestFormatBatchAddsHostIfPresent(t *testing.T) {
 	entry := batch.Entry{
-		PublishRequest: api.PublishRequest{},
+		PublishRequest: &api.PublishRequest{},
 		Tags: map[string]string{
 			"host": "my-host",
 		},
 	}
 
 	payload := formatBatch(batch.Batch{
-		Entries: []batch.Entry{entry},
+		Entries: []*batch.Entry{&entry},
 	})
 
 	assert.True(t, len(payload.Series) > 0)
@@ -40,12 +40,12 @@ func TestFormatBatchAddsHostIfPresent(t *testing.T) {
 
 func TestFormatBatchSkipsHostIfNotPresent(t *testing.T) {
 	entry := batch.Entry{
-		PublishRequest: api.PublishRequest{},
+		PublishRequest: &api.PublishRequest{},
 		Tags:           map[string]string{},
 	}
 
 	payload := formatBatch(batch.Batch{
-		Entries: []batch.Entry{entry},
+		Entries: []*batch.Entry{&entry},
 	})
 
 	assert.True(t, len(payload.Series) > 0)
@@ -57,7 +57,7 @@ func TestFormatBatchSkipsHostIfNotPresent(t *testing.T) {
 
 func TestFormatBatchIsValid(t *testing.T) {
 	entry := batch.Entry{
-		PublishRequest: api.PublishRequest{
+		PublishRequest: &api.PublishRequest{
 			MilliCpuUsage: 123,
 			MemoryTotalMb: 100,
 			MemoryRssMb:   50,
@@ -70,7 +70,7 @@ func TestFormatBatchIsValid(t *testing.T) {
 	}
 
 	m := mapFromPayload(formatBatch(batch.Batch{
-		Entries: []batch.Entry{entry},
+		Entries: []*batch.Entry{&entry},
 	}))
 
 	var (
@@ -88,14 +88,14 @@ func TestFormatBatchIsValid(t *testing.T) {
 
 func TestFormatBatchRunning(t *testing.T) {
 	entry := batch.Entry{
-		PublishRequest: api.PublishRequest{
+		PublishRequest: &api.PublishRequest{
 			Running: true,
 		},
 		Tags: map[string]string{},
 	}
 
 	m := mapFromPayload(formatBatch(batch.Batch{
-		Entries: []batch.Entry{entry},
+		Entries: []*batch.Entry{&entry},
 	}))
 
 	v, ok := m["enclave.running"]
@@ -106,14 +106,14 @@ func TestFormatBatchRunning(t *testing.T) {
 
 func TestFormatBatchNotRunning(t *testing.T) {
 	entry := batch.Entry{
-		PublishRequest: api.PublishRequest{
+		PublishRequest: &api.PublishRequest{
 			Running: false,
 		},
 		Tags: map[string]string{},
 	}
 
 	m := mapFromPayload(formatBatch(batch.Batch{
-		Entries: []batch.Entry{entry},
+		Entries: []*batch.Entry{&entry},
 	}))
 
 	v, ok := m["enclave.running"]

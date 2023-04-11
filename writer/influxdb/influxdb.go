@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter/writer"
-	client "github.com/influxdata/influxdb/client/v2"
+	"github.com/influxdata/influxdb/client/v2"
 	"time"
 )
 
@@ -24,7 +24,7 @@ type influxdbWriter struct {
 }
 
 func Open(config *Config) (writer.CloseWriter, error) {
-	client, err := client.NewHTTPClient(client.HTTPConfig{
+	httpClient, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     config.Address,
 		Username: config.Username,
 		Password: config.Password,
@@ -37,7 +37,7 @@ func Open(config *Config) (writer.CloseWriter, error) {
 
 	return &influxdbWriter{
 		database: config.Database,
-		client:   client,
+		client:   httpClient,
 	}, nil
 }
 

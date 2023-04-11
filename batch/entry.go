@@ -8,5 +8,5 @@ import (
 type Entry struct {
 	Time time.Time
 	Tags map[string]string
-	api.PublishRequest
+	*api.PublishRequest
 }

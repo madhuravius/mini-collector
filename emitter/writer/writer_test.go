@@ -59,7 +59,7 @@ func TestEmitSendsToInfluxdb(t *testing.T) {
 	t0 := time.Unix(10, 0)
 
 	err := em.Emit(ctx, batch.Batch{
-		Entries: []batch.Entry{batch.Entry{Time: t0}},
+		Entries: []*batch.Entry{{Time: t0}},
 	})
 
 	if assert.Nil(t, err) {
@@ -89,7 +89,7 @@ func TestEmitterPassesToNextEmitter(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		err := em1.Emit(ctx, batch.Batch{
-			Entries: []batch.Entry{batch.Entry{}},
+			Entries: []*batch.Entry{{}},
 		})
 		assert.Nil(t, err)
 	}

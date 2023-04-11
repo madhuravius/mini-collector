@@ -1,12 +1,13 @@
 package influxdb
 
 import (
+	"github.com/aptible/mini-collector/api"
 	"github.com/aptible/mini-collector/batch"
 	client "github.com/influxdata/influxdb/client/v2"
 	log "github.com/sirupsen/logrus"
 )
 
-func buildBatchPoints(database string, entries []batch.Entry) client.BatchPoints {
+func buildBatchPoints(database string, entries []*batch.Entry) client.BatchPoints {
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 		Database:  database,
 		Precision: "s",
@@ -19,7 +20,11 @@ func buildBatchPoints(database string, entries []batch.Entry) client.BatchPoints
 	}
 
 	for _, entry := range entries {
-		fields := entryToFields(&entry)
+		if entry.PublishRequest == nil {
+			entry.PublishRequest = &api.PublishRequest{}
+		}
+
+		fields := entryToFields(entry)
 
 		pt, err := client.NewPoint("metrics", entry.Tags, fields, entry.Time)
 		if err != nil {

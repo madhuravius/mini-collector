@@ -2,6 +2,7 @@ package influxdb
 
 import (
 	"fmt"
+	"github.com/aptible/mini-collector/api"
 	"github.com/aptible/mini-collector/batch"
 	client "github.com/influxdata/influxdb/client/v2"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestItWrites(t *testing.T) {
 	t0 := time.Unix(10, 0)
 
 	err := w.Write(batch.Batch{
-		Entries: []batch.Entry{batch.Entry{Time: t0}},
+		Entries: []*batch.Entry{{Time: t0, PublishRequest: &api.PublishRequest{}}},
 	})
 
 	if assert.Nil(t, err) {
@@ -67,7 +68,7 @@ func TestItReturnsAnError(t *testing.T) {
 	t0 := time.Unix(10, 0)
 
 	err := w.Write(batch.Batch{
-		Entries: []batch.Entry{batch.Entry{Time: t0}},
+		Entries: []*batch.Entry{{Time: t0, PublishRequest: &api.PublishRequest{}}},
 	})
 
 	assert.NotNil(t, err)

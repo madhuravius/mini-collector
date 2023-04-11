@@ -5,3 +5,9 @@
 /aggregator
 /_tools
 /.cover
+main
+.go-version
+.python-version
+venv/
+go
+go*.tar.gz

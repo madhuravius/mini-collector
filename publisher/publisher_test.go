@@ -41,7 +41,7 @@ type mockErrorClient struct {
 	calls int
 }
 
-func createMockErrorClient(cc *grpc.ClientConn) api.AggregatorClient {
+func createMockErrorClient(cc grpc.ClientConnInterface) api.AggregatorClient {
 	return &mockErrorClient{}
 }
 
@@ -57,7 +57,7 @@ func TestPublisherCloseReturns(t *testing.T) {
 
 func TestPublisherSucceeds(t *testing.T) {
 	client := &mockSuccessClient{}
-	f := func(cc *grpc.ClientConn) api.AggregatorClient { return client }
+	f := func(cc grpc.ClientConnInterface) api.AggregatorClient { return client }
 
 	pub := mustOpen(testConfig, createMockGrpcConnection, f)
 	defer pub.Close()
@@ -74,7 +74,7 @@ func TestPublisherSucceeds(t *testing.T) {
 
 func TestPublisherRetriesAndRateLimits(t *testing.T) {
 	client := &mockErrorClient{}
-	f := func(cc *grpc.ClientConn) api.AggregatorClient { return client }
+	f := func(cc grpc.ClientConnInterface) api.AggregatorClient { return client }
 
 	pub := mustOpen(testConfig, createMockGrpcConnection, f)
 	defer pub.Close()

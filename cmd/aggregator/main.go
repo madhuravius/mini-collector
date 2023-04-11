@@ -53,6 +53,7 @@ var (
 )
 
 type server struct {
+	api.UnimplementedAggregatorServer
 	batcher batcher.Batcher
 }
 
@@ -86,7 +87,7 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 	err := s.batcher.Ingest(ctx, &batch.Entry{
 		Time:           ts,
 		Tags:           tags,
-		PublishRequest: *point,
+		PublishRequest: point,
 	})
 
 	if err != nil {

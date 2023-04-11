@@ -93,18 +93,32 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 	for _, wrapper := range c.subsystems {
 		cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, wrapper.subsystem.Name(), c.dockerName)
 
+		// Warning - this is done because opencontainers/runc no longer returns an error.
+		// This was reported from this issue: https://github.com/opencontainers/runc/issues/1789
+		// This is likely a "spooky error", as this must have returned an error before because we have
+		// tests that would indicate this via running false with no error. There are no other
+		// locations the CgroupPoint{} could have been returned from the codebase but here.
+		var cgroupExistsErr error
+		if wrapper.subsystem.Name() == "cpu" {
+			_, cgroupExistsErr = cgroups.OpenFile(cgPath, "cpu.stat", os.O_RDONLY)
+		}
+
 		err := wrapper.subsystem.GetStats(cgPath, &c.statsBuffer)
 
-		if err != nil {
+		if err != nil || cgroupExistsErr != nil {
 			if wrapper.optional {
 				continue
 			}
 
-			if os.IsNotExist(err) {
+			if os.IsNotExist(err) || os.IsNotExist(cgroupExistsErr) {
 				return CgroupPoint{Running: false}, MakeNoContainerState(pollTime), nil
 			}
 
-			return CgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", wrapper.subsystem.Name(), err)
+			errorForDebugPrint := err
+			if errorForDebugPrint == nil {
+				errorForDebugPrint = cgroupExistsErr
+			}
+			return CgroupPoint{}, State{}, fmt.Errorf("%s.GetStats failed: %v", wrapper.subsystem.Name(), errorForDebugPrint)
 		}
 	}
 

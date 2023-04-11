@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build:
+      args:
+        active_user: $USER
+      dockerfile: ./Dockerfile
+      context: .
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    user: $USER
+    working_dir: /Users/$USER/work/mini-collector
+    volumes:
+      - .:/Users/$USER/work/mini-collector

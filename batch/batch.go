@@ -6,7 +6,7 @@ import (
 
 type Batch struct {
 	Id      uint64
-	Entries []Entry
+	Entries []*Entry
 }
 
 func (b *Batch) Fields() logrus.Fields {

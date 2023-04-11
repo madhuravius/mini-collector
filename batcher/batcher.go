@@ -76,13 +76,13 @@ func (b *batcher) run(ctx context.Context) {
 func (b *batcher) prepareBatch(id uint64, ctx context.Context) batch.Batch {
 	currentBatch := batch.Batch{
 		Id:      id,
-		Entries: make([]batch.Entry, 0, b.maxBatchSize),
+		Entries: make([]*batch.Entry, 0, b.maxBatchSize),
 	}
 
 	for {
 		select {
 		case newEntry := <-b.ingestBuffer:
-			currentBatch.Entries = append(currentBatch.Entries, *newEntry)
+			currentBatch.Entries = append(currentBatch.Entries, newEntry)
 			if len(currentBatch.Entries) >= b.maxBatchSize {
 				return currentBatch
 			}

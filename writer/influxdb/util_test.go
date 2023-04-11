@@ -10,7 +10,7 @@ import (
 
 func TestEntryToFieldsIsValid(t *testing.T) {
 	entry := batch.Entry{
-		PublishRequest: api.PublishRequest{
+		PublishRequest: &api.PublishRequest{
 			MilliCpuUsage: 123,
 			MemoryTotalMb: 100,
 			MemoryRssMb:   50,
@@ -45,16 +45,16 @@ func TestBuildBatchPointsIsValid(t *testing.T) {
 	t0 := time.Unix(0, 0)
 	t1 := time.Unix(10, 0)
 
-	entries := []batch.Entry{
-		batch.Entry{
+	entries := []*batch.Entry{
+		{
 			Time:           t0,
 			Tags:           map[string]string{"foo": "bar"},
-			PublishRequest: api.PublishRequest{MilliCpuUsage: 123},
+			PublishRequest: &api.PublishRequest{MilliCpuUsage: 123},
 		},
-		batch.Entry{
+		{
 			Time:           t1,
 			Tags:           map[string]string{"qux": "baz"},
-			PublishRequest: api.PublishRequest{MilliCpuUsage: 456},
+			PublishRequest: &api.PublishRequest{MilliCpuUsage: 456},
 		},
 	}
 

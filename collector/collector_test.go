@@ -2,13 +2,15 @@ package collector
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os/exec"
 	"path"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -21,6 +23,10 @@ var (
 	t0 = time.Date(2017, 1, 1, 0, 0, 0, 0, time.UTC)
 	t1 = time.Date(2017, 1, 1, 0, 0, 20, 0, time.UTC) // 20 seconds later
 )
+
+func init() {
+	cgroups.TestMode = true
+}
 
 func getTestDataCgroupPath() string {
 	_, filename, _, ok := runtime.Caller(0)
