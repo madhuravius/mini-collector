@@ -6,7 +6,7 @@ require (
 	github.com/PagerDuty/go-pagerduty v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/influxdata/influxdb v1.11.0
-	github.com/opencontainers/runc v1.1.4
+	github.com/opencontainers/runc v1.1.5
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/net v0.7.0
