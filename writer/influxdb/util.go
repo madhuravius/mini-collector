@@ -3,7 +3,8 @@ package influxdb
 import (
 	"github.com/aptible/mini-collector/api"
 	"github.com/aptible/mini-collector/batch"
-	client "github.com/influxdata/influxdb/client/v2"
+	_ "github.com/influxdata/influxdb1-client"
+	client "github.com/influxdata/influxdb1-client/v2"
 	log "github.com/sirupsen/logrus"
 )
 

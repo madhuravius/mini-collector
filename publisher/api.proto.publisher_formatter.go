@@ -14,6 +14,8 @@ func buildPublishRequest(ts time.Time, point collector.Point) api.PublishRequest
 
 		MilliCpuUsage: point.MilliCpuUsage,
 
+		MilliCpuLimit: point.MilliCpuLimit,
+
 		MemoryTotalMb: point.MemoryTotalMb,
 
 		MemoryRssMb: point.MemoryRssMb,
@@ -35,5 +37,6 @@ func buildPublishRequest(ts time.Time, point collector.Point) api.PublishRequest
 		PidsCurrent: point.PidsCurrent,
 
 		PidsLimit: point.PidsLimit,
+
 	}
 }

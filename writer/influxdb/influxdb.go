@@ -2,10 +2,11 @@ package influxdb
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/aptible/mini-collector/batch"
 	"github.com/aptible/mini-collector/emitter/writer"
-	"github.com/influxdata/influxdb/client/v2"
-	"time"
+	client "github.com/influxdata/influxdb1-client/v2"
 )
 
 const (

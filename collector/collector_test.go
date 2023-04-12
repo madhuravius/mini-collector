@@ -53,6 +53,8 @@ func TestGetCgroupPointReturnsData(t *testing.T) {
 	if assert.Nil(t, err) {
 		// CPU should be zero because we don't have any state history
 		assert.Equal(t, uint64(0), point.MilliCpuUsage)
+		// Our quota is 1/10 of the period so the limit over 20 seconds is 2 seconds
+		assert.Equal(t, uint64(2000), point.MilliCpuLimit)
 		assert.Equal(t, uint64(2), point.MemoryTotalMb)
 		assert.Equal(t, uint64(1), point.MemoryRssMb)
 		assert.Equal(t, uint64(8), point.MemoryLimitMb)
@@ -126,6 +128,7 @@ func TestGetCgroupPointReturnsZeroUsageForZeroTime(t *testing.T) {
 	point, _, err := c.getCgroupPoint(State{Time: t0})
 	if assert.Nil(t, err) {
 		assert.Equal(t, uint64(0), point.MilliCpuUsage)
+		assert.Equal(t, uint64(0), point.MilliCpuLimit)
 	}
 }
 
@@ -252,5 +255,37 @@ func TestGetCgroupPointIgnoresMissingPidsCgroup(t *testing.T) {
 	if assert.Nil(t, err) {
 		assert.Equal(t, uint64(0), point.PidsCurrent)
 		assert.Equal(t, uint64(0), point.PidsLimit)
+	}
+}
+
+func TestGetCgroupPointTreatsMissingCpuQuotaAsNoLimit(t *testing.T) {
+	cgPath, cb, err := copyTestDataToTempDir()
+	if err != nil {
+		t.Fatalf("copyTestDataToTempDir failed: %v", err)
+	}
+	defer cb()
+
+	cpuQuotaCgPath := path.Join(
+		cgPath,
+		"cpu",
+		"docker",
+		testContainerId,
+		"cpu.cfs_quota_us",
+	)
+
+	if err := exec.Command("rm", cpuQuotaCgPath).Run(); err != nil {
+		t.Fatalf("rm failed: %v", err)
+	}
+
+	c := newCollector(
+		cgPath,
+		testContainerId,
+		testMountPath,
+	)
+	c.clock = &stubClock{time: t1}
+
+	point, _, err := c.getCgroupPoint(State{Time: t0})
+	if assert.Nil(t, err) {
+		assert.Equal(t, uint64(0), point.MilliCpuLimit)
 	}
 }

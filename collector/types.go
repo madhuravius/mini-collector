@@ -6,6 +6,7 @@ import (
 
 type CgroupPoint struct {
 	MilliCpuUsage uint64
+	MilliCpuLimit uint64
 
 	MemoryTotalMb uint64
 	MemoryRssMb   uint64

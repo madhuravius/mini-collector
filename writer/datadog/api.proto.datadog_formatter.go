@@ -289,6 +289,26 @@ func formatBatch(batch batch.Batch) datadogPayload {
 			allSeries = append(allSeries, series)
 		}
 
+		val = int64(entry.MilliCpuLimit)
+
+		if val >= 0 {
+			series = datadogSeries{
+				Metric: "enclave.milli_cpu_limit",
+				Points: []datadogPoint{
+					datadogPoint{ts, val},
+				},
+				Type: "gauge",
+				Tags: tags,
+			}
+
+			host, ok = entry.Tags["host"]
+			if ok {
+				series.Host = host
+			}
+
+			allSeries = append(allSeries, series)
+		}
+
 	}
 
 	return datadogPayload{Series: allSeries}
