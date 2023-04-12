@@ -75,5 +75,10 @@ func entryToFields(entry *batch.Entry) map[string]interface{} {
 		out["pids_limit"] = val
 	}
 
+	val = int64((*entry).MilliCpuLimit)
+	if val >= 0 {
+		out["milli_cpu_limit"] = val
+	}
+
 	return out
 }

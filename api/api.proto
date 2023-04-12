@@ -25,6 +25,7 @@ message PublishRequest {
 	uint64 disk_write_iops = 12;
 	uint64 pids_current = 13;
 	uint64 pids_limit = 14;
+	uint64 milli_cpu_limit = 15;
 }
 
 message PublishResponse {

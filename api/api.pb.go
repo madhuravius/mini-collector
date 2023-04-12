@@ -43,6 +43,7 @@ type PublishRequest struct {
 	DiskWriteIops uint64 `protobuf:"varint,12,opt,name=disk_write_iops,json=diskWriteIops,proto3" json:"disk_write_iops,omitempty"`
 	PidsCurrent   uint64 `protobuf:"varint,13,opt,name=pids_current,json=pidsCurrent,proto3" json:"pids_current,omitempty"`
 	PidsLimit     uint64 `protobuf:"varint,14,opt,name=pids_limit,json=pidsLimit,proto3" json:"pids_limit,omitempty"`
+	MilliCpuLimit uint64 `protobuf:"varint,15,opt,name=milli_cpu_limit,json=milliCpuLimit,proto3" json:"milli_cpu_limit,omitempty"`
 }
 
 func (x *PublishRequest) Reset() {

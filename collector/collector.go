@@ -2,11 +2,13 @@ package collector
 
 import (
 	"fmt"
-	"github.com/opencontainers/runc/libcontainer/cgroups"
-	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"os"
+	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 )
 
 var (
@@ -122,6 +124,11 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 		}
 	}
 
+	cpuQuota, cpuPeriod, err := c.getMaxCpu()
+	if err != nil {
+		return CgroupPoint{}, State{}, fmt.Errorf("Failed to get max CPU: %v", err)
+	}
+
 	ioStats := computeIoStats(&c.statsBuffer)
 
 	thisState := State{
@@ -131,6 +138,7 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 	}
 
 	milliCpuUsage := computeMilliCpuUsage(thisState, lastState)
+	milliCpuLimit := computeMilliCpuLimit(thisState, lastState, cpuQuota, cpuPeriod)
 
 	readKbps := computeReadKbps(thisState, lastState)
 	writeKbps := computeWriteKbps(thisState, lastState)
@@ -144,6 +152,7 @@ func (c *collector) getCgroupPoint(lastState State) (CgroupPoint, State, error) 
 
 	return CgroupPoint{
 		MilliCpuUsage: milliCpuUsage,
+		MilliCpuLimit: milliCpuLimit,
 		MemoryTotalMb: virtualMemory / MbInBytes,
 		MemoryRssMb:   (baseRssMemory + mappedFileMemory) / MbInBytes,
 		MemoryLimitMb: (limitMemory) / MbInBytes,
@@ -193,4 +202,35 @@ func (c *collector) GetPoint(lastState State) (Point, State, error) {
 	}
 
 	return Point{CgroupPoint, DiskPoint}, thisState, nil
+}
+
+func (c *collector) getMaxCpu() (cpuQuotaUs int64, cpuPeriodUs int64, err error) {
+	// The Quota will be negative if no limit is set.
+	// The CPU quota and period are available in the same place on the filesystem as the other cgroup
+	// info. opencontainers/runc just doesn't make it easy to access through their interface.
+	cgPath := fmt.Sprintf("%s/%s/docker/%s", c.cgroupPath, "cpu", c.dockerName)
+
+	f, err := os.Open(filepath.Join(cgPath, "cpu.cfs_quota_us"))
+	if err == nil {
+		defer f.Close()
+		cpuQuotaUs, err = readInt(f)
+		if err != nil {
+			return
+		}
+	} else {
+		// If the file doesn't exist then assume there is no limit.
+		// In this case set the quota to a negative value.
+		if !os.IsNotExist(err) {
+			return
+		}
+		cpuQuotaUs = -1
+	}
+
+	f, err = os.Open(filepath.Join(cgPath, "cpu.cfs_period_us"))
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	cpuPeriodUs, err = readInt(f)
+	return
 }

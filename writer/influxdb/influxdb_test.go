@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/aptible/mini-collector/api"
 	"github.com/aptible/mini-collector/batch"
-	client "github.com/influxdata/influxdb/client/v2"
+	client "github.com/influxdata/influxdb1-client/v2"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
