@@ -140,7 +140,6 @@ MainLoop:
 			lastPoll = nextPoll
 
 			point, thisState, err := c.GetPoint(lastState)
-
 			if err != nil {
 				log.Warnf("GetPoint failed: %v", err)
 				continue MainLoop

@@ -58,7 +58,7 @@ type server struct {
 }
 
 func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.PublishResponse, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+	md, ok := metadata.FromOutgoingContext(ctx)
 
 	if !ok {
 		return nil, fmt.Errorf("no metadata")

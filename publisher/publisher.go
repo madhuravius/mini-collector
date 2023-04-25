@@ -89,7 +89,7 @@ func open(config *Config, cnf connectionFactory, clf clientFactory) (Publisher, 
 		return nil, fmt.Errorf("connectionFactory failed: %v", err)
 	}
 
-	go func() {
+	go func(ctx context.Context, conn *grpc.ClientConn) {
 		// This is here to support tests, where we return nil for the
 		// *grpc.ClientConn as a stub: since *grpc.ClientConn is a
 		// struct (as opposed to an interface), we can't do any better.
@@ -98,24 +98,27 @@ func open(config *Config, cnf connectionFactory, clf clientFactory) (Publisher, 
 		}
 
 		p.startConnection(ctx, conn)
-	}()
+	}(ctx, conn)
 
 	return p, nil
 }
 
-func (p *publisher) startConnection(ctx context.Context, connection *grpc.ClientConn) {
+func (p *publisher) startConnection(clientContext context.Context, connection *grpc.ClientConn) {
 	client := p.clientFactory(connection)
 
 	md := metadata.New(p.tags)
 
-	baseCtx := metadata.NewOutgoingContext(ctx, md)
+	// The client needs its own context irrespective of the grpc context (which gets overwritten in
+	// DialContext). This is likely not the right way to do things but it should work for now
+	mdBaseCtx := context.Background()
+	mdCtx := metadata.NewOutgoingContext(mdBaseCtx, md)
 
 PublishLoop:
 	for {
 		select {
 		case payload := <-p.publishChannel:
 			err := func() error {
-				localCtx, cancel := context.WithTimeout(baseCtx, p.publishTimeout)
+				localCtx, cancel := context.WithTimeout(mdCtx, p.publishTimeout)
 				defer cancel()
 
 				_, err := client.Publish(localCtx, payload, grpc.FailFast(false))
@@ -126,7 +129,7 @@ PublishLoop:
 					// grpc.FailFast(false) being set, we
 					// don't accidentally go into a hot
 					// loop.
-					<-localCtx.Done()
+					<-clientContext.Done()
 					return err
 				}
 
@@ -147,7 +150,7 @@ PublishLoop:
 			}
 
 			log.Debugf("delivered point [%v]", (*payload).UnixTime)
-		case <-ctx.Done():
+		case <-clientContext.Done():
 			log.Debugf("shutdown loop loop")
 			break PublishLoop
 		}
