@@ -28,10 +28,12 @@ jobs:
       sudo: true
       services:
         - docker
+      before_script:
+        - export TAG=aggregator-$TRAVIS_TAG
+      env: APP=aggregator
       script:
         - make -f .docker/Makefile build
         - make -f .docker/Makefile test
-      env: TAG=aggregator
       before_deploy:
         - export DOCKER_CONFIG="${HOME}/.docker"
         - mkdir -p "$DOCKER_CONFIG"
@@ -41,8 +43,10 @@ jobs:
         skip_cleanup: true
         script: make -f .docker/Makefile push
         on:
-          branch: master
+          tags: true
 
     -
       <<: *docker
-      env: TAG=mini-collector
+      before_script:
+        - export TAG=mini-collector-$TRAVIS_TAG
+      env: APP=mini-collector

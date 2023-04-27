@@ -35,16 +35,16 @@ $(error REPOSITORY *must* be set in .docker/config.mk)
 endif
 
 
-# Create $(TAG)/config.mk if you need to e.g. set environment variables depending
+# Create $(APP)/config.mk if you need to e.g. set environment variables depending
 # on the tag being built. This is typically useful for things constants like a
 # point version, a sha1sum, etc.
-# Note that $(TAG)/config.mk is entirely optional.
+# Note that $(APP)/config.mk is entirely optional.
 
--include .docker/$(TAG)/config.mk
+-include .docker/$(APP)/config.mk
 
 
 # By default, we'll push the tag we're building, and the 'latest' tag if said
-# tag is indeed the latest one. Set PUSH_TAGS in config.mk (or $(TAG)/config.mk)
+# tag is indeed the latest one. Set PUSH_TAGS in config.mk (or $(APP)/config.mk)
 # to override that behavior (note: you can't override the 'latest' tag).
 
 PUSH_TAGS ?= $(TAG)
@@ -55,17 +55,18 @@ endif
 
 
 # By default, we'll push the registry we're naming the image after. You can
-# override this in .docker/config.mk (or .docker/$(TAG)/config.mk)
+# override this in .docker/config.mk (or .docker/$(APP)/config.mk)
 
 PUSH_REGISTRIES ?= $(REGISTRY)
 
 
 # Export what we're building for e.g. test scripts to use. Exporting
 # other variables is the responsibility of .docker/config.mk and
-# .docker/$(TAG)/config.mk.
+# .docker/$(APP)/config.mk.
 
 export REGISTRY
 export REPOSITORY
+export APP
 export TAG
 
 
@@ -86,22 +87,22 @@ test: build
 	set -e ; if [ -f 'test.sh' ]; then ./test.sh; break; fi
 
 
-build: .docker/$(TAG)/Dockerfile
-	docker build -t "$(REGISTRY)/$(REPOSITORY):$(TAG)" -f ".docker/$(TAG)/Dockerfile" .
+build: .docker/$(APP)/Dockerfile
+	docker build -t "$(REGISTRY)/$(REPOSITORY):$(TAG)" -f ".docker/$(APP)/Dockerfile" .
 ifeq "$(TAG)" "$(LATEST_TAG)"
 	docker tag "$(REGISTRY)/$(REPOSITORY):$(TAG)" "$(REGISTRY)/$(REPOSITORY):latest"
 endif
 
 
-# Per-tag Dockerfile target. Look for Dockerfile or Dockerfile.erb in the root, and use it for $(TAG).
+# Per-tag Dockerfile target. Look for Dockerfile or Dockerfile.erb in the root, and use it for $(APP).
 # We prioritize Dockerfile.erb over Dockerfile if both are present.
 
-.docker/$(TAG)/Dockerfile: .docker/Dockerfile.erb .docker/Dockerfile | $(TAG)
+.docker/$(APP)/Dockerfile: .docker/Dockerfile.erb .docker/Dockerfile | $(APP)
 	set -e ;\
 	if [ -f '.docker/Dockerfile.erb' ]; then \
-		erb ".docker/Dockerfile.erb" > ".docker/$(TAG)/Dockerfile"; \
+		erb ".docker/Dockerfile.erb" > ".docker/$(APP)/Dockerfile"; \
 	else \
-		cp ".docker/Dockerfile" ".docker/$(TAG)/Dockerfile"; \
+		cp ".docker/Dockerfile" ".docker/$(APP)/Dockerfile"; \
 	fi
 
 
@@ -114,8 +115,8 @@ endif
 .docker/Dockerfile:
 	@ if [ ! -f '.docker/Dockerfile.erb' ]; then echo "You must create one of .docker/Dockerfile.erb or .docker/Dockerfile"; exit 1; fi
 
-$(TAG):
-	mkdir -p "$(TAG)"
+$(APP):
+	mkdir -p "$(APP)"
 
 
 .PHONY: push test build
