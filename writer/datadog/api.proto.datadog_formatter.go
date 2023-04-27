@@ -41,7 +41,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -61,7 +61,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -81,7 +81,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -101,7 +101,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -121,7 +121,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -141,7 +141,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -161,7 +161,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -181,7 +181,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -201,7 +201,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -221,7 +221,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -241,7 +241,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -261,7 +261,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
@@ -281,7 +281,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 				Tags: tags,
 			}
 
-			host, ok = entry.Tags["host"]
+			host, ok = entry.Tags["host_name"]
 			if ok {
 				series.Host = host
 			}
