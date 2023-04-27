@@ -23,7 +23,7 @@ func TestFormatBatchAddsHostIfPresent(t *testing.T) {
 	entry := batch.Entry{
 		PublishRequest: &api.PublishRequest{},
 		Tags: map[string]string{
-			"host": "my-host",
+			"host_name": "my-host",
 		},
 	}
 
