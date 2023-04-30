@@ -7,9 +7,6 @@ jobs:
       language: go
       go: "1.20.1"
       before_install:
-        - export PYENV_VERSION=3.6
-        - ./scripts/install-protoc.sh
-        - export PATH="/tmp/protoc/bin:$PATH"
         - export PATH="$PATH:$(go env GOPATH)/bin"
         - mkdir -p "${HOME}/gopath/src/github.com/aptible/mini-collector"
         - rsync -az "${TRAVIS_BUILD_DIR}/" "${HOME}/gopath/src/github.com/aptible/mini-collector/"

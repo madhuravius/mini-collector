@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/aptible/mini-collector/collector"
-	"github.com/aptible/mini-collector/publisher"
-	"github.com/aptible/mini-collector/tls"
+	"github.com/aptible/mini-collector/internal/collector"
+	"github.com/aptible/mini-collector/internal/collector/publisher"
+	"github.com/aptible/mini-collector/internal/tls"
 	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"

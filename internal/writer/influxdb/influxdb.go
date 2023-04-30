@@ -1,0 +1,51 @@
+package influxdb
+
+import (
+	"fmt"
+	"github.com/aptible/mini-collector/internal/aggregator/batch"
+	"github.com/aptible/mini-collector/internal/aggregator/writer"
+	"github.com/influxdata/influxdb/client/v2"
+	"time"
+)
+
+const (
+	timeout = 30 * time.Second
+)
+
+type influxdbClient interface {
+	Write(bp client.BatchPoints) error
+	Close() error
+}
+
+type influxdbWriter struct {
+	database string
+
+	client influxdbClient
+}
+
+func Open(config *Config) (writer.CloseWriter, error) {
+	httpClient, err := client.NewHTTPClient(client.HTTPConfig{
+		Addr:     config.Address,
+		Username: config.Username,
+		Password: config.Password,
+		Timeout:  timeout,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid InfluxDb configuration: %v", err)
+	}
+
+	return &influxdbWriter{
+		database: config.Database,
+		client:   httpClient,
+	}, nil
+}
+
+func (w *influxdbWriter) Write(batch batch.Batch) error {
+	bp := buildBatchPoints(w.database, batch.Entries)
+	return w.client.Write(bp)
+}
+
+func (w *influxdbWriter) Close() error {
+	return w.client.Close()
+}

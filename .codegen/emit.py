@@ -18,6 +18,7 @@ def to_camel_case(s):
     return "".join(c.title() for c in bits)
 
 
+# REWRITE WHATEVER THIS IS
 def generate_code(request, response):
     for proto_file in request.proto_file:
         output = []

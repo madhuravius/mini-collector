@@ -4,18 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aptible/mini-collector/api"
-	"github.com/aptible/mini-collector/batch"
-	"github.com/aptible/mini-collector/batcher"
-	"github.com/aptible/mini-collector/emitter"
-	"github.com/aptible/mini-collector/emitter/blackhole"
-	"github.com/aptible/mini-collector/emitter/hold"
-	"github.com/aptible/mini-collector/emitter/notify"
-	"github.com/aptible/mini-collector/emitter/text"
-	"github.com/aptible/mini-collector/emitter/writer"
-	"github.com/aptible/mini-collector/tls"
-	"github.com/aptible/mini-collector/writer/datadog"
-	"github.com/aptible/mini-collector/writer/influxdb"
+	"github.com/aptible/mini-collector/internal/aggregator"
+	"github.com/aptible/mini-collector/internal/aggregator/batch"
+	batcher2 "github.com/aptible/mini-collector/internal/aggregator/batcher"
+	"github.com/aptible/mini-collector/internal/aggregator/blackhole"
+	"github.com/aptible/mini-collector/internal/aggregator/hold"
+	"github.com/aptible/mini-collector/internal/aggregator/notify"
+	"github.com/aptible/mini-collector/internal/aggregator/text"
+	"github.com/aptible/mini-collector/internal/aggregator/writer"
+	"github.com/aptible/mini-collector/internal/tls"
+	"github.com/aptible/mini-collector/internal/writer/datadog"
+	"github.com/aptible/mini-collector/internal/writer/influxdb"
+	"github.com/aptible/mini-collector/protobufs"
 	grpcLogrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -53,11 +53,11 @@ var (
 )
 
 type server struct {
-	api.UnimplementedAggregatorServer
-	batcher batcher.Batcher
+	protobufs.UnimplementedAggregatorServer
+	batcher batcher2.Batcher
 }
 
-func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.PublishResponse, error) {
+func (s *server) Publish(ctx context.Context, point *protobufs.PublishRequest) (*protobufs.PublishResponse, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 
 	if !ok {
@@ -94,10 +94,10 @@ func (s *server) Publish(ctx context.Context, point *api.PublishRequest) (*api.P
 		logger.Warnf("Ingest failed: %v", err)
 	}
 
-	return &api.PublishResponse{}, nil
+	return &protobufs.PublishResponse{}, nil
 }
 
-func makeFinalEmitter() (emitter.Emitter, error) {
+func makeFinalEmitter() (aggregator.Emitter, error) {
 	notifyConfig := &notify.Config{}
 	ok, err := tryLoadConfiguration("AGGREGATOR_NOTIFY_CONFIGURATION", notifyConfig)
 	if err != nil {
@@ -111,7 +111,7 @@ func makeFinalEmitter() (emitter.Emitter, error) {
 	return blackhole.Open(), nil
 }
 
-func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix string, count int) (emitter.Emitter, func(), error) {
+func stackWriters(writerFactory func() (writer.CloseWriter, error), namePrefix string, count int) (aggregator.Emitter, func(), error) {
 	name := fmt.Sprintf("%s %d", namePrefix, count)
 
 	w, err := writerFactory()
@@ -171,7 +171,7 @@ func tryLoadConfiguration(envVariable string, configStruct interface{}) (bool, e
 
 }
 
-func getEmitter() (emitter.Emitter, func(), error) {
+func getEmitter() (aggregator.Emitter, func(), error) {
 	datadogConfig := &datadog.Config{}
 	ok, err := tryLoadConfiguration("AGGREGATOR_DATADOG_CONFIGURATION", datadogConfig)
 	if err != nil {
@@ -220,7 +220,7 @@ func getEmitter() (emitter.Emitter, func(), error) {
 	return nil, nil, fmt.Errorf("no emitter configured")
 }
 
-func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
+func getBatcher(em aggregator.Emitter) (batcher2.Batcher, error) {
 	minPublishFrequencyText, ok := os.LookupEnv("AGGREGATOR_MINIMUM_PUBLISH_FREQUENCY")
 	if !ok {
 		minPublishFrequencyText = "15s"
@@ -234,7 +234,7 @@ func getBatcher(em emitter.Emitter) (batcher.Batcher, error) {
 	logger.Infof("minPublishFrequency: %v", minPublishFrequency)
 
 	// TODO: Make batchsize configurable?
-	return batcher.New(em, minPublishFrequency, 1000), nil
+	return batcher2.New(em, minPublishFrequency, 1000), nil
 
 }
 
@@ -275,7 +275,7 @@ func main() {
 		srv = grpc.NewServer()
 	}
 
-	api.RegisterAggregatorServer(srv, &server{
+	protobufs.RegisterAggregatorServer(srv, &server{
 		batcher: batcher,
 	})
 
