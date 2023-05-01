@@ -16,6 +16,7 @@ protobufs:
 		--go-grpc_out=protobufs \
 		--plugin=protoc-gen-custom="$PWD/.codegen/codegen" \
 		--go_out=protobufs
+	go run ./.codegen/*.go
 
 .PHONY: gofiles
 src: $(GOFILES_NOVENDOR) fmt
