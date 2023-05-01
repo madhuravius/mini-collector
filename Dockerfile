@@ -5,9 +5,12 @@ ARG active_user
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
+    golang-goprotobuf-dev \
     protobuf-compiler \
     sudo \
     wget
+
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 RUN apt-get -y install apt-transport-https ca-certificates curl gnupg2 software-properties-common
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -

@@ -1,0 +1,18 @@
+// Auto-generated code. DO NOT EDIT.
+package publisher
+
+import (
+	"time"
+	"github.com/aptible/mini-collector/protobufs"
+	"github.com/aptible/mini-collector/internal/collector"
+)
+
+func buildPublishRequest(ts time.Time, point collector.Point) protobufs.PublishRequest {
+	return protobufs.PublishRequest{
+		UnixTime:      ts.Unix(),
+		Running:       point.Running,
+
+		{{range $idx, $row := .Rows}}{{ $row.CamelCasedFieldName }}: point.{{ $row.CamelCasedFieldName }},
+		{{end}}
+	}
+}

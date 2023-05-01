@@ -2,7 +2,7 @@
 package influxdb
 
 import (
-	"github.com/aptible/mini-collector/batch"
+	"github.com/aptible/mini-collector/internal/aggregator/batch"
 )
 
 func entryToFields(entry *batch.Entry) map[string]interface{} {
@@ -14,13 +14,12 @@ func entryToFields(entry *batch.Entry) map[string]interface{} {
 	// InfluxDB do not support uint64 as a type.
 
 	var val int64
-
-	{% for field in item.field if field.name not in ["unix_time", "running"] %}
-		val = int64((*entry).{{to_camel_case(field.name)}})
-		if val >= 0 {
-			out["{{field.name}}"] = val
-		}
-	{% endfor %}
+	{{range $idx, $row := .Rows}}
+	val = int64((*entry).{{ $row.CamelCasedFieldName }})
+	if val >= 0 {
+		out["{{ $row.RawFieldName }}"] = val
+	}
+	{{end}}
 
 	return out
 }

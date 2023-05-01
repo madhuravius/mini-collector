@@ -3,6 +3,7 @@ package influxdb
 import (
 	"fmt"
 	"github.com/aptible/mini-collector/internal/aggregator/batch"
+	"github.com/aptible/mini-collector/protobufs"
 	client "github.com/influxdata/influxdb/client/v2"
 	"github.com/stretchr/testify/assert"
 	"testing"

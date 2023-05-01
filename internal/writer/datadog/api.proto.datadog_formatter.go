@@ -11,8 +11,8 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 	var (
 		series datadogSeries
-		host   string
-		ok     bool
+		host string
+		ok bool
 	)
 
 	for _, entry := range batch.Entries {
@@ -26,14 +26,14 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 		var val int64
 
-		val = 0
-		if entry.Running {
-			val = 1
-		}
+		
+		
+		val = int64(entry.UnixTime)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
-				Metric: "enclave.running",
+				Metric: "enclave.unix_time",
 				Points: []datadogPoint{
 					datadogPoint{ts, val},
 				},
@@ -48,8 +48,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.MilliCpuUsage)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -68,8 +70,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.MemoryTotalMb)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -88,8 +92,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.MemoryRssMb)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -108,8 +114,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.MemoryLimitMb)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -128,8 +136,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.DiskUsageMb)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -148,8 +158,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.DiskLimitMb)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -168,8 +180,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.DiskReadKbps)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -188,8 +202,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.DiskWriteKbps)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -208,8 +224,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.DiskReadIops)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -228,8 +246,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.DiskWriteIops)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -248,8 +268,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.PidsCurrent)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -268,8 +290,10 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-
+		
+		
 		val = int64(entry.PidsLimit)
+		
 
 		if val >= 0 {
 			series = datadogSeries{
@@ -288,6 +312,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
+		
 
 	}
 

@@ -3,7 +3,7 @@ package datadog
 
 import (
 	"fmt"
-	"github.com/aptible/mini-collector/batch"
+	"github.com/aptible/mini-collector/internal/aggregator/batch"
 )
 
 func formatBatch(batch batch.Batch) datadogPayload {
@@ -26,19 +26,19 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 		var val int64
 
-		{% for field in item.field if field.name not in ["unix_time"] %}
-		{% if field.name == "running" %}
-			val = 0
-			if entry.Running {
-				val = 1
-			}
-		{% else %}
-			val = int64(entry.{{to_camel_case(field.name)}})
-		{% endif %}
+		{{range $idx, $row := .Rows}}
+		{{ if eq $row.RawFieldName "running"}}
+		val = 0
+		if entry.Running {
+			val = 1
+		}
+		{{ else }}
+		val = int64(entry.{{ $row.CamelCasedFieldName }})
+		{{ end }}
 
 		if val >= 0 {
 			series = datadogSeries{
-				Metric: "enclave.{{ field.name }}",
+				Metric: "enclave.{{ $row.RawFieldName }}",
 				Points: []datadogPoint{
 					datadogPoint{ts, val},
 				},
@@ -53,7 +53,7 @@ func formatBatch(batch batch.Batch) datadogPayload {
 
 			allSeries = append(allSeries, series)
 		}
-		{% endfor %}
+		{{ end }}
 
 	}
 

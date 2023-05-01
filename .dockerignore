@@ -2,3 +2,4 @@
 ./.docker
 ./mini-collector
 ./aggregator
+./codegen/codegen

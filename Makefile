@@ -11,20 +11,11 @@ deps:
 build: $(GOFILES_NOVENDOR)
 	go list ./...  | grep cmd | xargs -P $$(nproc) -n 1 -- go build
 
-writer/influxdb/api.proto.influxdb_formatter.go \
-writer/datadog/api.proto.datadog_formatter.go \
-publisher/api.proto.publisher_formatter.go: \
-api/api.proto .codegen/emit.py \
-.codegen/influxdb_formatter.go.jinja2 \
-.codegen/datadog_formatter.go.jinja2 \
-.codegen/publisher_formatter.go.jinja2
-	protoc -I api api/api.proto --plugin=protoc-gen-custom=./.codegen/emit.py --custom_out=.
-	find . -name "api.proto.*_formatter.go" | xargs gofmt -l -w
-
-api/api.pb.go: api/api.proto
-	protoc -I api/ api/api.proto \
-		--go-grpc_out=api \
-		--go_out=api
+protobufs:
+	protoc -I protobufs/ protobufs/api.proto \
+		--go-grpc_out=protobufs \
+		--plugin=protoc-gen-custom="$PWD/.codegen/codegen" \
+		--go_out=protobufs
 
 .PHONY: gofiles
 src: $(GOFILES_NOVENDOR) fmt

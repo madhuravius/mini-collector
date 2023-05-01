@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aptible/mini-collector/internal/aggregator/batch"
-	"github.com/aptible/mini-collector/internal/emitter/blackhole"
+	"github.com/aptible/mini-collector/internal/aggregator/blackhole"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
